@@ -1,0 +1,104 @@
+aid: plumma
+url: https://raw.githubusercontent.com/api-evangelist/plumma/refs/heads/main/apis.yml
+name: Plumma
+kind: company
+description: >-
+  Plumma SRL is an Italian software house in Modena (VAT IT04209450362, Via Corsini 21,
+  41021 Modena; a second office in Bologna) that spent roughly 25 years building cloud-native
+  SaaS for the medical-device and industrial sectors before launching its own product,
+  Plumma Connect, in early 2025. Plumma Connect is an aggregation gateway in front of mobile
+  network operators: it sells enterprises a single integration point for the operator-held
+  identity, SIM and network-state signals that the GSMA Open Gateway programme exposes, rather
+  than requiring the buyer to onboard operator-by-operator and country-by-country. Plumma is a
+  GSMA Open Gateway channel partner and names GSMA, TIM, AWS and WaveMaker among its partners.
+  Its architectural choice is notable and deliberate: rather than mirroring the CAMARA
+  one-endpoint-per-API shape, Plumma Connect publishes a SINGLE OpenAPI 3.1 operation —
+  POST /api on https://connect.plumma.it/services — that takes a phone number plus a list of
+  named commands (sim_swap, kyc_match, age_verification, current_carrier, porting_logs,
+  roaming_intel, churn_tracker, digital_footprint and others), so the CAMARA surface is an
+  implementation detail behind an abstraction layer rather than the developer contract. The
+  company positions the product for fraud prevention and identity verification — the dominant
+  demand for network APIs — with stated coverage of 17 live countries across Europe, the
+  Americas, APAC and Africa, and 75+ network connections. Documentation and the OpenAPI are
+  public and ungated; there is no self-service sign-up, no published pricing, and no sandbox —
+  onboarding is sales-led, which is the norm for this layer of the telecom value chain.
+image: https://kinlane-images.s3.amazonaws.com/shared/apis-json/apis-json-logo.jpg
+tags:
+- Telecommunications
+- Network APIs
+- Italy
+- Europe
+- GSMA Open Gateway
+- CAMARA
+- API Aggregator
+- Fraud Prevention
+- Identity Verification
+- SIM Swap
+- KYC
+- Age Verification
+- Number Verification
+- Telco Intelligence
+- Software Development
+created: '2026-09-07'
+modified: '2026-09-07'
+specificationVersion: '0.23'
+x-type: company
+x-source: harvest:direct-outreach
+x-tier: stub
+x-tier-reason: harvest
+apis:
+- aid: plumma:plumma-connect-api
+  name: Plumma CONNECT API
+  description: >-
+    A single-operation aggregation API over mobile network operator intelligence. One POST /api
+    call carries a phone number in E.164 form plus a `commands` array, and returns the requested
+    signals in one response. The published enum carries 17 commands — line_classification,
+    current_carrier, issuing_carrier, porting_timestamp, porting_logs, network_presence,
+    roaming_intel, deactivation_point, churn_tracker, sim_swap, port_fraud_shield,
+    digital_footprint, age_verification, kyc_match, divert_detector, commercial_segment and
+    tenure_period. Authentication is a single API key header (x-plumma-connect-api-key, documented
+    as a base64-encoded X.509 client certificate). Errors are RFC 7807 problem documents on every
+    4xx/5xx, carrying a correlation_id. The specification ships four worked request examples,
+    including a multi-command call.
+  humanURL: https://connect.plumma.it/plumma-connect-docs/
+  baseURL: https://connect.plumma.it/services
+  tags:
+  - Network APIs
+  - SIM Swap
+  - KYC
+  - Age Verification
+  - Fraud Prevention
+  - GSMA Open Gateway
+  properties:
+  - type: OpenAPI
+    url: https://connect.plumma.it/docs/openapi/connect-api.json
+  - type: Documentation
+    url: https://connect.plumma.it/plumma-connect-docs/
+  - type: APIReference
+    url: https://connect.plumma.it/plumma-connect-docs/
+common:
+- type: Website
+  url: https://www.plumma.it
+- type: Website
+  url: https://connect.plumma.it
+- type: DeveloperPortal
+  url: https://connect.plumma.it
+- type: Documentation
+  url: https://connect.plumma.it/plumma-connect-docs/
+- type: APIReference
+  url: https://connect.plumma.it/plumma-connect-docs/
+- type: StatusPage
+  url: https://oneuptime.com/status-page/5c4b010b-1753-4d8f-8689-226d6e86d72a
+- type: Support
+  url: https://connect.plumma.it/support/
+- type: PrivacyPolicy
+  url: https://www.plumma.it/privacy-policy.html
+- type: Blog
+  url: https://connect.plumma.it/blog/
+- type: Contact
+  url: https://www.plumma.it/company.html
+maintainers:
+- FN: Kin Lane
+  email: kin@apievangelist.com
+- FN: APIs.json
+  email: info@apis.io
