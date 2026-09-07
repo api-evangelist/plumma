@@ -1,0 +1,21 @@
+generated: '2026-09-07'
+method: probed
+source: live DNS/TLS/HTTP probes of apis.yml + OpenAPI hosts
+hosts:
+- host: www.plumma.it
+  https: true
+  tls_version: TLSv1.3
+  cert_expires: Jan 28 23:59:59 2027 GMT
+  hsts: false
+- host: connect.plumma.it
+  https: true
+  tls_version: TLSv1.3
+  cert_expires: Jan 29 23:59:59 2027 GMT
+  hsts: false
+domains:
+- domain: plumma.it
+  dnssec: false
+  caa: []
+  spf: true
+  dmarc: true
+  dmarc_policy: quarantine

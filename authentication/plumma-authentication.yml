@@ -1,0 +1,16 @@
+generated: '2026-09-07'
+method: derived
+source: openapi/plumma-connect-openapi.yml
+summary:
+  types:
+  - apiKey
+  api_key_in:
+  - header
+schemes:
+- name: ApiKeyAuth
+  type: apiKey
+  in: header
+  parameter: x-plumma-connect-api-key
+  description: Your X.509 client certificate, base64-encoded.
+  sources:
+  - openapi/plumma-connect-openapi.yml

@@ -1,0 +1,96 @@
+generated: '2026-09-07'
+method: searched
+source: >-
+  https://connect.plumma.it/plumma-connect-docs/ — the provider's documentation content
+  API, documents `content-how_subscrition_work-doc`, `content-billing_credit_management-doc`,
+  `content-what_happen_next_to_activation-doc`, `product-description-subscription`,
+  `guide-billing-doc` and `content-understanding_API_pricing-doc`
+currency: EUR
+billing_model: subscription-plus-prepaid-wallet
+plan_count: 2
+plans:
+- name: Demo
+  price: 0
+  currency: EUR
+  period: null
+  description: >-
+    Every new account starts here. Sandbox access from day one with an automatically
+    generated demo key; canned operator responses that mirror the live response shape
+    exactly. Never billed.
+  included:
+    sandbox_calls: 180 commands per calendar day
+    live_calls: not available
+  limits:
+    rate_limit: 2 requests per second
+    daily_commands: 180
+  note: >-
+    The daily budget is counted in COMMANDS, not requests — one request carrying 18
+    commands consumes 18. The Terms of Service (Art. 2.3a) states a different figure,
+    "a maximum API call limit 20/day … could be increased asking your account manager";
+    the Technical Guide and Integration Guide both state 180 commands/day. Recorded as
+    published; the two provider documents disagree and neither supersedes the other.
+- name: Live (Plumma Connect subscription)
+  price: 200
+  currency: EUR
+  period: month
+  description: >-
+    Production access. A recurring EUR 200/month platform subscription that activates the
+    production environment and keeps the account and infrastructure running; it does NOT
+    include API usage. Usage is drawn from a separate prepaid Euro wallet.
+  included:
+    initial_wallet_credit: 100 EUR loaded at activation
+    live_calls: unlimited (usage-billed)
+    sandbox_calls: 180 commands per calendar day (unchanged after going live)
+  limits:
+    rate_limit: 5 requests per second, increasable on request
+  overage:
+    model: prepaid wallet drawdown
+    unit: one served command
+    note: >-
+      Billed per command an operator actually served, never per API call. A request that
+      fans out to three commands is three billable units; a command skipped for lack of
+      country coverage, or a request rejected at validation, costs nothing. A supplier
+      answer meaning "I hold no data for this" (e.g. a KYC score of -1) IS a served result
+      and IS billed. Global commands — current_carrier, line_classification,
+      issuing_carrier, digital_footprint, roaming_intel — are served and billed regardless
+      of the number's country, so the no-coverage exemption does not apply to them.
+  price_per_call:
+    published: false
+    note: >-
+      Per-command unit prices vary by region and by service and are shown only on pricing
+      cards inside the authenticated console; the public doc
+      ("Understanding API Pricing") says only "The cost per call varies depending on the
+      region. You can find the exact pricing for each service in the cards above."
+  billing_controls:
+    hard_stop: >-
+      Access is restricted with HTTP 402 when the wallet balance reaches zero. A negative
+      balance deactivates BOTH the live key and the demo key; the sandbox stays reachable
+      but stops forwarding commands until a top-up.
+    low_balance_notice: email when remaining credit drops below EUR 100, with a top-up link
+    invoicing: >-
+      An automatic invoice is generated at the start of each month for the EUR 200
+      subscription plus consumption, including a consumption summary even where those
+      costs were already covered by the prepaid balance.
+    payment_processor: Stripe (checkout in the console; card details never stored by Plumma)
+refunds:
+  policy_published: true
+  source: "https://connect.plumma.it/plumma-connect-docs/ — content-refund_policy-doc"
+  summary: >-
+    Pay-as-you-go and non-refundable once consumed: any command reached or network API
+    call executed is treated as consumed. Service credits (not cash) are the remedy where
+    a failure is attributable to Plumma's own infrastructure and uptime falls below the
+    subscribed commitment. Requests must be submitted within 30 days of the transaction
+    or incident; after that window nothing is considered. Stripe fees are deducted from
+    any exceptional monetary refund.
+  window_days: 30
+sign_up:
+  self_service: true
+  url: https://connect.ploomma.com/
+  note: >-
+    Self-service has changed since this repo was first profiled. The product site's two
+    primary CTAs ("Access PLUMMA Connect", "Try it out now") both link to the console at
+    connect.ploomma.com, and the docs describe a Demo account with sandbox access granted
+    at onboarding and a Stripe checkout inside the console that unlocks the live key.
+    Production go-live still requires countersigned paper — Master Agreement, DPA,
+    Technical Addendum and these Terms (ToS Art. 3.1) — so the funnel is self-service to
+    sandbox and contracted to production.

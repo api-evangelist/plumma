@@ -1,0 +1,76 @@
+generated: '2026-09-07'
+method: derived
+source: >-
+  openapi/plumma-connect-openapi.yml (#/components/schemas/allowedCommandValues and the
+  PlmResponse block names) and https://connect.plumma.it/plumma-connect-docs/ —
+  `guide-technical_guide-doc` (the Commands tables), `resource-status-and-errors-doc`
+  (the cmd_enc ordinal table), and the per-command reference documents
+name: Plumma Connect command vocabulary
+summary: >-
+  On this API the controlled vocabulary IS the interface. There are no resource paths to
+  name; a caller sends a `commands` array and every capability, every billing unit and
+  every error ordinal is keyed on one of these strings. This file is the authoritative
+  cross-reference of the three places Plumma publishes that vocabulary — the OpenAPI enum,
+  the Commands documentation, and the cmd_enc ordinal table — because the three do not
+  agree.
+authoritative_source: '#/components/schemas/allowedCommandValues in the OpenAPI'
+groups:
+- name: Number & network intelligence
+  terms:
+  - {term: line_classification, ordinal: 0, in_enum: true, definition: 'The category associated with the queried number.', values: 'Fixed or Mobile', coverage: global}
+  - {term: current_carrier, ordinal: 1, in_enum: true, definition: 'The mobile operator currently serving the subscriber.', values: 'MCC, MNC, Name, SPID, LRN, OCN', coverage: global}
+  - {term: issuing_carrier, ordinal: 2, in_enum: true, definition: 'The original operator that first issued the number.', values: 'MCC, MNC, Name, SPID, OCN', coverage: global}
+  - {term: porting_timestamp, ordinal: 3, in_enum: true, definition: 'The most recent date the number was ported.', values: 'ported_date, ported_date_type'}
+  - {term: porting_logs, ordinal: 4, in_enum: true, definition: 'Full history of porting events for the number.', values: 'ts, action, network_target, i_type'}
+  - {term: network_presence, ordinal: 5, in_enum: true, definition: 'Confirms whether the number is currently registered on a network.', values: 'yes, no, n/a'}
+  - {term: roaming_intel, ordinal: 6, in_enum: true, definition: 'Detects international roaming status and location.', values: 'is_roaming (T/F), roaming_mcc, roaming_mnc', coverage: global}
+  - {term: commercial_segment, ordinal: 15, in_enum: true, definition: 'The billing type or contract category of the subscriber.', values: 'PAYG, PAYM, Business, n/a'}
+  - {term: deactivation_point, ordinal: 7, in_enum: true, definition: 'The last recorded deactivation event for the number.', region: USA, values: 'operator, action, ts'}
+  - {term: churn_tracker, ordinal: 8, in_enum: true, definition: 'Up to the 10 most recent deactivation events.', region: USA, values: 'operator, action, ts, number'}
+  - {term: tenure_period, ordinal: 16, in_enum: true, definition: 'How long the subscriber has held the number; takes an integer parameter of the same name on the request.', values: plm_score}
+  - {term: enhanced_type, ordinal: null, in_enum: false, definition: 'Extended network classification of the number.', values: 'integer 1-33', status: documented-not-in-enum}
+  - {term: qdr_history, ordinal: 17, in_enum: false, definition: 'Quality-of-data-record history, returned as an array of service/source/ts/plmnetwork.', status: documented-not-in-enum}
+- name: Identity & fraud
+  terms:
+  - {term: sim_swap, ordinal: 9, in_enum: true, definition: 'Detects recent SIM card changes as a fraud risk indicator.', values: 'risk_indicator, thresholds, event_date'}
+  - {term: port_fraud_shield, ordinal: 10, in_enum: true, definition: 'Analyzes recent porting activity for fraudulent patterns.', values: 'present, fraud_status'}
+  - {term: divert_detector, ordinal: 14, in_enum: true, definition: 'Confirms whether call forwarding is currently active on the number.', values: '0, 1, -1, -2'}
+  - {term: digital_footprint, ordinal: 11, in_enum: true, definition: "Verifies the number's presence across online platforms.", values: 'true, false or N/A per platform', coverage: global}
+  - {term: age_verification, ordinal: 12, in_enum: true, definition: 'Verifies whether the subscriber is above or below a defined age threshold.', values: 'verified (-2 to 1), threshold'}
+  - {term: kyc_match, ordinal: 13, in_enum: true, definition: 'Matches caller-supplied PII (name, address, date of birth) against authoritative operator data.', values: 'match scores 0-100 per field, -1 for no operator data'}
+  - {term: number_verification, ordinal: 18, in_enum: false, definition: 'Silently confirms the number provided matches the one on the device — no OTP.', status: documented-not-in-enum}
+  - {term: scam_check, ordinal: 19, in_enum: false, definition: 'Detects whether a subscriber is on an active call during a transaction, an indicator of authorised-push-payment fraud in progress.', status: in-development}
+  - {term: address_cleanse, ordinal: null, in_enum: false, definition: 'Normalizes and standardizes a supplied address string.', status: 'flag-driven — triggered by normalize on Address/InlineAddress rather than by a command name'}
+  - {term: device_swap, ordinal: null, in_enum: false, definition: 'Documented in the Commands reference (command-device_swap-doc).', status: documented-not-in-enum}
+  - {term: device_location, ordinal: null, in_enum: false, definition: 'Documented in the Commands reference (command-device-location-doc).', status: documented-not-in-enum}
+coverage_classes:
+  global:
+    definition: >-
+      Served and billed for EVERY country regardless of the number's origin. The
+      no-coverage billing exemption does not apply to them.
+    terms: [current_carrier, line_classification, issuing_carrier, digital_footprint, roaming_intel]
+  country_specific:
+    definition: >-
+      Routed only where a supplier is configured for the resolved country. Uncovered calls
+      return status 2 or contribute to a status 4 partial reply, and are not billed.
+    terms: all others
+divergences:
+- id: enum-vs-docs
+  detail: >-
+    The OpenAPI enum accepts 17 command strings. The Commands documentation and the cmd_enc
+    ordinal table between them name at least 23 (adding enhanced_type, qdr_history,
+    number_verification, scam_check, address_cleanse, device_swap, device_location). The
+    public product page counts 19. A client generated from the contract cannot send the
+    six that are documented but not enumerated.
+- id: ordinals-are-a-second-registry
+  detail: >-
+    cmd_enc assigns fixed 0-19 ordinals, which is effectively a second, longer registry of
+    the same vocabulary. Three of its ordinals (17 qdr_history, 18 number_verification,
+    19 scam_check) have no counterpart in the request enum, so the error encoding can
+    describe outcomes for commands the contract will not accept.
+- id: naming-style
+  detail: >-
+    Commands are snake_case; the response block for sim_swap is `simswap` (no underscore)
+    and for commercial_segment is `market_segment` (a different word). The command name is
+    therefore not a reliable key for the response field — see
+    data-model/plumma-data-model.yml for the full binding.

@@ -2,27 +2,35 @@ aid: plumma
 url: https://raw.githubusercontent.com/api-evangelist/plumma/refs/heads/main/apis.yml
 name: Plumma
 kind: company
-description: >-
-  Plumma SRL is an Italian software house in Modena (VAT IT04209450362, Via Corsini 21,
-  41021 Modena; a second office in Bologna) that spent roughly 25 years building cloud-native
-  SaaS for the medical-device and industrial sectors before launching its own product,
-  Plumma Connect, in early 2025. Plumma Connect is an aggregation gateway in front of mobile
-  network operators: it sells enterprises a single integration point for the operator-held
-  identity, SIM and network-state signals that the GSMA Open Gateway programme exposes, rather
-  than requiring the buyer to onboard operator-by-operator and country-by-country. Plumma is a
-  GSMA Open Gateway channel partner and names GSMA, TIM, AWS and WaveMaker among its partners.
-  Its architectural choice is notable and deliberate: rather than mirroring the CAMARA
-  one-endpoint-per-API shape, Plumma Connect publishes a SINGLE OpenAPI 3.1 operation —
-  POST /api on https://connect.plumma.it/services — that takes a phone number plus a list of
-  named commands (sim_swap, kyc_match, age_verification, current_carrier, porting_logs,
-  roaming_intel, churn_tracker, digital_footprint and others), so the CAMARA surface is an
-  implementation detail behind an abstraction layer rather than the developer contract. The
-  company positions the product for fraud prevention and identity verification — the dominant
-  demand for network APIs — with stated coverage of 17 live countries across Europe, the
-  Americas, APAC and Africa, and 75+ network connections. Documentation and the OpenAPI are
-  public and ungated; there is no self-service sign-up, no published pricing, and no sandbox —
-  onboarding is sales-led, which is the norm for this layer of the telecom value chain.
-image: https://kinlane-images.s3.amazonaws.com/shared/apis-json/apis-json-logo.jpg
+description: 'Plumma SRL is an Italian software house (VAT IT04209450362, REA MO-451932) with its registered
+  office at Via Corsini 21, Fellicarolo, Fanano (Modena) and an operational office at Via Provinciale
+  175/B, Crespellano, Valsamoggia (Bologna). Its own product, Plumma Connect, is an aggregation gateway
+  in front of mobile network operators: it sells enterprises a single integration point for the operator-held
+  identity, SIM and network-state signals that the GSMA Open Gateway programme exposes, instead of requiring
+  the buyer to onboard operator-by-operator and country-by-country. Plumma states it is a GSMA Open Gateway
+  channel partner and names GSMA, TIM, AWS and WaveMaker among its partners.
+
+
+  Its architectural position is the notable part, and it is deliberate. Rather than mirroring the CAMARA
+  one-endpoint-per-capability shape, Plumma Connect publishes a SINGLE OpenAPI 3.1 operation — POST /api
+  on https://connect.plumma.it/services — that takes a phone number in E.164 form plus a list of named
+  commands (sim_swap, kyc_match, age_verification, current_carrier, porting_logs, roaming_intel, churn_tracker,
+  digital_footprint and others), so the CAMARA surface is an implementation detail behind an abstraction
+  layer rather than the developer contract. The company is not, however, standard-averse underneath: its
+  KYC request schema carries the CAMARA KnowYourCustomer Match attribute vocabulary verbatim (in snake_case),
+  and every 4xx/5xx returns an RFC 7807 problem document with a correlation_id. The divergence is at the
+  endpoint shape, not the data model.
+
+
+  The product is positioned for fraud prevention and identity verification, with company-stated coverage
+  of 17 live countries across Europe, the Americas, APAC and Africa and 75+ network connections. Documentation,
+  the OpenAPI and a draft-07 request schema are public and ungated, and the JavaScript documentation portal
+  is backed by an unauthenticated JSON content API at connect.ploomma.com that serves 72 documents including
+  the billing guide, SLA, terms and full command reference. Billing is EUR 200/month plus a prepaid wallet
+  charged per served command; published rate limits are 2/5 RPS and 180 commands/day. There is no MCP
+  server, no agent card, no SDKs and no /.well-known documents — the provider marks SDKs and webhooks
+  ''under construction''.'
+image: https://connect.plumma.it/wp-content/uploads/2026/03/PLUMMA-logo-bianco-inline-90x304-1.png
 tags:
 - Telecommunications
 - Network APIs
@@ -42,6 +50,7 @@ tags:
 created: '2026-09-07'
 modified: '2026-09-07'
 specificationVersion: '0.23'
+position: Producing
 x-type: company
 x-source: harvest:direct-outreach
 x-tier: stub
@@ -49,17 +58,15 @@ x-tier-reason: harvest
 apis:
 - aid: plumma:plumma-connect-api
   name: Plumma CONNECT API
-  description: >-
-    A single-operation aggregation API over mobile network operator intelligence. One POST /api
-    call carries a phone number in E.164 form plus a `commands` array, and returns the requested
-    signals in one response. The published enum carries 17 commands — line_classification,
-    current_carrier, issuing_carrier, porting_timestamp, porting_logs, network_presence,
-    roaming_intel, deactivation_point, churn_tracker, sim_swap, port_fraud_shield,
-    digital_footprint, age_verification, kyc_match, divert_detector, commercial_segment and
-    tenure_period. Authentication is a single API key header (x-plumma-connect-api-key, documented
-    as a base64-encoded X.509 client certificate). Errors are RFC 7807 problem documents on every
-    4xx/5xx, carrying a correlation_id. The specification ships four worked request examples,
-    including a multi-command call.
+  description: A single-operation aggregation API over mobile network operator intelligence. One POST
+    /api call carries a phone number in E.164 form plus a `commands` array, and returns the requested
+    signals in one response. The published enum carries 17 commands — line_classification, current_carrier,
+    issuing_carrier, porting_timestamp, porting_logs, network_presence, roaming_intel, deactivation_point,
+    churn_tracker, sim_swap, port_fraud_shield, digital_footprint, age_verification, kyc_match, divert_detector,
+    commercial_segment and tenure_period. Authentication is a single API key header (x-plumma-connect-api-key,
+    documented as a base64-encoded X.509 client certificate). Errors are RFC 7807 problem documents on
+    every 4xx/5xx, carrying a correlation_id. The specification ships four worked request examples, including
+    a multi-command call.
   humanURL: https://connect.plumma.it/plumma-connect-docs/
   baseURL: https://connect.plumma.it/services
   tags:
@@ -71,12 +78,60 @@ apis:
   - GSMA Open Gateway
   properties:
   - type: OpenAPI
+    url: openapi/plumma-connect-openapi.yml
+  - type: OpenAPI
     url: https://connect.plumma.it/docs/openapi/connect-api.json
+  - type: JSONSchema
+    url: json-schema/plumma-plmrequest.schema.json
+  - type: Overlay
+    url: overlays/plumma-connect-api-overlay.yaml
+  - type: Examples
+    url: examples/plumma-connect-api-examples.json
   - type: Documentation
     url: https://connect.plumma.it/plumma-connect-docs/
   - type: APIReference
     url: https://connect.plumma.it/plumma-connect-docs/
 common:
+- type: Conventions
+  url: conventions/plumma-conventions.yml
+- type: Vocabulary
+  url: vocabulary/plumma-commands-vocabulary.yml
+- type: DataModel
+  url: data-model/plumma-data-model.yml
+- type: ErrorCatalog
+  url: errors/plumma-problem-types.yml
+- type: ErrorCodes
+  url: errors/plumma-status-codes.yml
+- type: Lifecycle
+  url: lifecycle/plumma-lifecycle.yml
+- type: Conformance
+  url: conformance/plumma-conformance.yml
+- type: Compliance
+  url: https://connect.plumma.it/plumma-connect-docs/#security
+- type: Sandbox
+  url: sandbox/plumma-sandbox.yml
+- type: Plans
+  url: plans/plumma-plans-pricing.yml
+- type: RateLimits
+  url: rate-limits/plumma-rate-limits.yml
+- type: Packages
+  url: packages/plumma-packages.yml
+- type: AgentSkill
+  url: skills/_index.yml
+- type: X-MCPServerCandidate
+  url: mcp/plumma-mcp.yml
+- type: LLMsTxt
+  url: llms/plumma-llms.txt
+- type: SignUp
+  url: https://connect.ploomma.com/
+- type: TermsOfService
+  url: https://connect.plumma.it/plumma-connect-docs/#terms-and-conditions
+- type: AgenticAccess
+  url: agentic-access/plumma-agentic-access.yml
+- type: Authentication
+  url: authentication/plumma-authentication.yml
+- type: DomainSecurity
+  url: security/plumma-domain-security.yml
 - type: Website
   url: https://www.plumma.it
 - type: Website
@@ -97,6 +152,41 @@ common:
   url: https://connect.plumma.it/blog/
 - type: Contact
   url: https://www.plumma.it/company.html
+- type: Standards
+  url: https://www.gsma.com/solutions-and-impact/gsma-open-gateway/
+  name: GSMA Open Gateway
+  x-standard: gsma-open-gateway
+  x-relationship: channel-partner (company-stated)
+- type: Standards
+  url: https://camaraproject.org/
+  name: CAMARA
+  x-standard: camara
+  x-relationship: vocabulary-conformant, endpoint-divergent — KYC Match attribute names carried verbatim;
+    single POST /api rather than one endpoint per capability
+- type: Standards
+  url: https://www.rfc-editor.org/rfc/rfc9457
+  name: Problem Details for HTTP APIs
+  x-standard: problem-details
+  x-relationship: implemented — RFC 7807 problem documents on every 4xx/5xx
+- type: Standards
+  url: https://spec.openapis.org/oas/v3.1.0
+  name: OpenAPI
+  x-standard: openapi
+  x-relationship: implemented — publishes OpenAPI 3.1.0 ungated
+x-enrichment:
+  date: '2026-09-07'
+  status: enriched
+  artifacts_added: 28
+  pass: local-v3
+x-coverage:
+  state: covered
+  reason: n/a
+  detail: Fully readable. The OpenAPI 3.1 contract and a standalone draft-07 request schema are served
+    unauthenticated from connect.plumma.it, and the JS-rendered docs portal turned out to be backed by
+    an ungated JSON content API at connect.ploomma.com/services/compliance — 72 documents including the
+    billing guide, the SLA, the terms, the status/error registry and the full command reference, all HTTP
+    200.
+  checked: '2026-09-07'
 maintainers:
 - FN: Kin Lane
   email: kin@apievangelist.com

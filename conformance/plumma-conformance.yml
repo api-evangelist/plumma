@@ -1,0 +1,168 @@
+generated: '2026-09-07'
+method: searched
+source: >-
+  Derived from openapi/plumma-connect-openapi.yml and json-schema/plumma-plmrequest.schema.json,
+  and searched against https://connect.plumma.it/plumma-connect-docs/ —
+  `compliance-security` ("Security & Compliance", V1.1, 21/12/2025),
+  `compliance-terms-and-conditions`, `compliance-usage-limitations`,
+  `help-telephone_number_format-doc`, and the GSMA Open Gateway channel-partner
+  announcement at gsma.com
+standards:
+- id: openapi-3.1
+  conforms: true
+  evidence: 'openapi: 3.1.0 with one path, one operation and a full components.schemas set'
+- id: json-schema-draft-07
+  conforms: true
+  evidence: >-
+    A standalone request-validation schema is published alongside the OpenAPI at
+    https://connect.plumma.it/docs/openapi/plmrequest.schema.json — $schema
+    http://json-schema.org/draft-07/schema#, $id
+    https://connect.plumma.it/schemas/1.0.2-20260903172027/plmrequest.schema.json, carrying
+    its own x-model-version. The contract points at it explicitly: "point your validator at
+    it to check a payload before sending."
+- id: rfc7807-problem-details
+  conforms: true
+  evidence: >-
+    Every 4xx/5xx on POST /api returns application/problem+json against a ProblemDetail
+    schema with type/title/status/detail/instance, plus the Plumma extensions `path` and
+    `correlation_id`. The provider names RFC 7807; RFC 9457 obsoletes it and the media type
+    is unchanged.
+- id: rfc9457-problem-details
+  conforms: partial
+  evidence: >-
+    Media type and member names match, but `type` is `about:blank` in the published
+    example, so problem types are not individually addressable URIs — the registry cannot
+    be matched on a stable identifier.
+- id: e164
+  conforms: true
+  evidence: >-
+    ITU-T E.164 is the request contract. PlmRequest.number carries pattern
+    ^\+?[1-9][0-9]{6,14}$, and the provider publishes a dedicated E.164 explainer
+    (help-telephone_number_format-doc) stating the 15-digit cap, the CC/NDC/SN structure,
+    that the leading "+" is optional, and that spaces, dashes, dots and parentheses are
+    rejected.
+- id: iso8601
+  conforms: true
+  evidence: >-
+    "All temporal data returned by or exchanged with Plumma Connect (timestamps, porting
+    dates, deactivation events, and any other date/time field) conforms to the ISO 8601
+    standard." — Technical Guide, Core concepts.
+- id: iso3166-1
+  conforms: true
+  evidence: 'Address.country pattern [A-Za-z]{2,3}; country codes appear in status_message as alpha-2 (e.g. [IT])'
+- id: oauth2
+  conforms: false
+  evidence: >-
+    The API is API-key only (apiKey in header, x-plumma-connect-api-key). The Security &
+    Compliance document states "We utilize the industry-standard OAuth 2.0 framework", but
+    that claim describes the platform console's own user/permission management (RBAC), not
+    the CONNECT API contract — no oauth2 securityScheme is declared and no authorization or
+    token URL is published. Recorded as a documentation/contract divergence, not as OAuth
+    support.
+- id: openid-connect
+  conforms: false
+  evidence: 'No /.well-known/openid-configuration on any Plumma host (all probed 404 or SPA-shell)'
+- id: rfc9116-security-txt
+  conforms: false
+  evidence: '/.well-known/security.txt returned 404 on connect.plumma.it and core.ploomma.com'
+- id: rfc8594-sunset-header
+  conforms: false
+  evidence: No Sunset or Deprecation header is declared in the contract or described in the docs
+- id: rfc9331-ratelimit-headers
+  conforms: false
+  evidence: >-
+    Limits are documented in prose (2/5 RPS, 180 commands/day) but no RateLimit-* or
+    X-RateLimit-* header is declared; the only defined response header is X-Correlation-ID
+- id: json-api
+  conforms: false
+- id: odata
+  conforms: false
+- id: scim2
+  conforms: false
+- id: fhir
+  conforms: false
+- id: idempotency-key
+  conforms: false
+  evidence: No idempotency key header or replay-protection mechanism is published
+- id: pagination
+  conforms: false
+  evidence: >-
+    Not applicable — a single non-collection operation. porting_logs and churn_tracker are
+    operator-sized arrays with no paging parameters.
+domain_standards:
+- id: gsma-open-gateway
+  conforms: partial
+  role: channel-partner
+  evidence: >-
+    Plumma is a named GSMA Open Gateway channel partner (announcement published by GSMA at
+    gsma.com/solutions-and-impact/gsma-open-gateway/, and linked from connect.plumma.it),
+    and the product is explicitly an aggregation layer over Open Gateway operator APIs. The
+    membership is real; the CONTRACT is not Open-Gateway-shaped, which is the deliberate
+    product decision described below.
+- id: camara
+  conforms: false
+  evidence: >-
+    The contract does NOT expose the CAMARA surface. CAMARA publishes one endpoint per
+    capability (POST /sim-swap/v2/check, POST /kyc-match/v0.3/match, …); Plumma publishes a
+    single POST /api that takes a `commands` array, so the CAMARA resource model, its
+    per-API versioning and its three-legged CIBA/auth-code flows are all implementation
+    details behind the abstraction rather than the developer contract. This is a design
+    choice the company states openly, not an omission.
+- id: camara-kyc-match-vocabulary
+  conforms: true
+  layer: attribute-vocabulary
+  evidence: >-
+    THE DOMAIN-STANDARD SIGNATURE IS IN THE SCHEMA, NOT THE PATHS. components.schemas
+    KycChallenges/Name/Address carry the CAMARA KnowYourCustomer "Match" attribute set,
+    snake_cased one-for-one: name_kana_hankaku, name_kana_zenkaku, family_name_at_birth,
+    house_number_extension, street_no, postcode, national_id (CAMARA idDocument), plus
+    dob/email/gender. Verified against camaraproject/KnowYourCustomer
+    code/API_definitions/kyc-match.yaml, which defines nameKanaHankaku, nameKanaZenkaku,
+    familyNameAtBirth, houseNumberExtension, streetNumber and idDocument. A caller who
+    already speaks CAMARA KYC Match can map fields mechanically; only the envelope differs.
+  evidence_location: openapi/plumma-connect-openapi.yml#/components/schemas/KycChallenges
+- id: camara-commonalities-errors
+  conforms: partial
+  layer: upstream-error-vocabulary
+  evidence: >-
+    The CAMARA Commonalities code SERVICE_NOT_APPLICABLE reaches the caller as a documented
+    value rather than a status: the simSwapNotApplicable response example states that an
+    operator answering "422 SERVICE_NOT_APPLICABLE" is returned as HTTP 200 with
+    simswap.risk_indicator = -1. The vocabulary is honoured upstream and flattened at the
+    edge.
+- id: itu-t-e164
+  conforms: true
+  layer: identifier-scheme
+  evidence: See standards[] entry `e164` — the request identifier scheme for the whole API.
+compliance:
+  published: true
+  url: https://connect.plumma.it/plumma-connect-docs/#security
+  document: 'Security & Compliance, V1.1, dated 21/12/2025'
+  certifications: []
+  certifications_note: >-
+    NO FORMAL CERTIFICATION IS CLAIMED, AND THE PROVIDER SAYS SO. The document's own
+    heading is "Suggested Reference Standards" and it reads: "While we may not yet hold
+    formal certifications, we are committed to adhering to the best practices defined by
+    the following security and quality standards" — naming ISO 27001 and SOC 2 Type I/II as
+    references, not as held certifications. Any reading of this profile that credits Plumma
+    with ISO 27001 or SOC 2 would be wrong.
+  claims:
+  - {standard: GDPR, status: claimed-compliant, basis: 'gateway principle — no personal data persisted at rest; processing limited to the duration of the transaction; data minimisation and purpose limitation'}
+  - {standard: 'ISO 27001', status: reference-only, basis: 'named as a reference for a structured ISMS; not held'}
+  - {standard: 'SOC 2 Type I/II', status: reference-only, basis: 'named as a reference for SaaS/API providers; not held'}
+  - {standard: PSD2, status: supports-clients, basis: 'infrastructure and security protocols stated to support clients operating under PSD2 secure-access requirements; Plumma is not itself a regulated payment institution'}
+  - {standard: 'ePrivacy Directive', status: client-obligation, basis: 'ToS Art. 6.2 places the lawful basis and end-user consent obligation on the client'}
+  posture:
+    data_at_rest: 'none for customer/subscriber data — gateway only; configuration and licensing data encrypted with AES-256'
+    data_in_transit: 'TLS 1.2 or higher, HTTPS only'
+    hosting: 'Amazon Web Services, region-based, isolated VPC with private subnets; API gateways and backends not directly exposed to the public internet'
+    waf: 'AWS WAF, stated OWASP Top 10 coverage, plus AWS DDoS protection and rate limiting'
+    access_control: 'RBAC in the internal platform; administrative access requires MFA'
+    monitoring: 'AWS CloudWatch across system metrics, access logs and performance'
+    sdlc: 'SAST before deployment; documented patch management'
+    resilience: 'multi-AZ; stated RTO within one hour and RPO near zero (nothing transient is stored at rest)'
+    pen_testing: 'annual penetration testing by external partners (stated commitment)'
+  independent_verification: >-
+    None available. Every statement above is the provider's own, published on its own docs
+    surface. There is no audit report, no trust portal, no certificate registry entry and no
+    third-party attestation to check them against.

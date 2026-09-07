@@ -1,0 +1,116 @@
+generated: '2026-09-07'
+method: searched
+source: >-
+  openapi/plumma-connect-openapi.yml (info.version, PlmResponse.version) and
+  https://connect.plumma.it/plumma-connect-docs/ — `compliance-usage-limitations` (the SLA),
+  `compliance-terms-and-conditions`, `content-refund_policy-doc`,
+  `resource-status-and-errors-doc`; status page linked from connect.plumma.it
+versioning:
+  scheme: dated model-set string
+  current: 1.0.2-20260903172027
+  location: info.version
+  runtime_assertion:
+    field: PlmResponse.version
+    rule: >-
+      The same string is returned in the `version` field of every response, so a client can
+      confirm at runtime that the running service matches the contract it was built
+      against: make any call and compare response.version with info.version.
+  path_versioning: none
+  header_versioning: none
+  note: >-
+    There is no v1/v2 in the path, no version header and no content negotiation. The only
+    version signal is this string, and it moves whenever the PlmRequest/PlmResponse model
+    set changes. Published response examples in the same document carry three different
+    values (1.0.2-20260704190444, 1.0.2-20260608095239 and the current
+    1.0.2-20260903172027), which shows the string turning over faster than the examples.
+deprecation:
+  policy_url: null
+  policy_published: false
+  sunset_header: false
+  deprecation_header: false
+  note: >-
+    NO DEPRECATION POLICY IS PUBLISHED. Nothing in the docs, the SLA or the Terms states a
+    notice period for removing a command or changing a response shape, and neither RFC 8594
+    `Sunset` nor the `Deprecation` header is mentioned or declared in the contract. The
+    nearest thing is the SLA's Art. 5 exclusion, which runs the other way: "If an MNO or
+    Aggregator stops providing a specific service or access point, Plumma's obligation to
+    provide that specific API service ceases immediately" — an explicit statement that an
+    upstream withdrawal can remove a capability with no notice at all. No `Deprecation`
+    pointer is emitted.
+deprecated_operations: []
+change_notification:
+  maintenance:
+    scheduled: >-
+      SLA Art. 3.1 — Plumma "will endeavor to provide the Client with at least 48 hours'
+      notice for any maintenance expected to cause service interruption."
+    emergency: >-
+      SLA Art. 3.2 — emergency maintenance may be performed without prior notice for a
+      critical security threat or major system failure.
+    upstream: >-
+      SLA Art. 3.3 — Plumma is not responsible for MNO or third-party maintenance windows,
+      though it will attempt to pass through notifications it receives.
+  changelog:
+    published: false
+    note: >-
+      No dated changelog or release-notes page exists on connect.plumma.it (the page
+      sitemap carries five pages: home, cookie policy, support, why-us, docs). The version
+      string is the only change signal. No `ChangeLog` pointer is emitted.
+sla:
+  published: true
+  url: https://connect.plumma.it/plumma-connect-docs/#usage-limitations
+  document: SLA and Limitations, V.1.1
+  uptime_target: 99.5% monthly
+  uptime_target_conflict: >-
+    The Refund Policy states a different figure for the same commitment — "if the Plumma
+    Connect platform uptime falls below 99.00% during a single billing month" — while the
+    SLA states 99.5%. Both are published; recorded as-is.
+  exclusions:
+  - Scheduled Maintenance
+  - >-
+      Upstream Provider Outages — downtime, latency or interruption caused by mobile
+      network operators, underlying technology providers or internet routing is expressly
+      excluded from the availability calculation.
+  - Client-side misconfiguration, connectivity, or compromised API keys
+  - The Sandbox, which is provided AS-IS with no uptime guarantee
+  - Force Majeure
+  latency: >-
+    Art. 4.2 — no specific transaction response time is guaranteed, because the service
+    involves real-time communication with telecom networks.
+  data_accuracy: >-
+    Art. 4.3 — data is sourced from third-party MNO databases and provided "as-is";
+    Plumma is not liable for inaccuracies. ToS Art. 5.1 goes further: responses are
+    "informational and probabilistic in nature" and must not be the sole basis for
+    identity verification or critical business decisions.
+  remedies:
+    kind: service credits only
+    cap: 10% of that month's invoice
+    claim_window: 7 days from the end of the affected month, in writing
+    conflict: >-
+      The Refund Policy sets a 30-day window for refund/credit requests generally, while
+      the SLA sets 7 days for availability-linked service credits.
+support:
+  channel: support@plumma.it
+  url: https://connect.plumma.it/support/
+  business_hours: 09:00-18:00 CET, Monday-Friday, excluding Italian public holidays
+  tiers:
+  - {priority: P1, label: Critical, description: 'Total service outage or complete inability to access APIs for all users', response: 1 hour during business hours}
+  - {priority: P2, label: High, description: 'Major degradation of performance, or a specific API function failing', response: 4 hours during business hours}
+  - {priority: P3, label: Normal, description: 'Minor technical issues, intermittent errors, functional bugs with workarounds', response: next business day}
+  - {priority: P4, label: Low, description: 'General inquiries, documentation clarification, feature requests', response: 2 business days}
+status_page: https://oneuptime.com/status-page/5c4b010b-1753-4d8f-8689-226d6e86d72a
+status_page_note: >-
+  Hosted on OneUptime rather than a Plumma-branded subdomain, and linked from the product
+  site footer as "Service Status". Verified live, HTTP 200.
+suspension:
+  note: >-
+    ToS Art. 4.2 — Plumma monitors production use for anomalous traffic, fraudulent
+    commands or unauthorized use, and may suspend the service immediately and without prior
+    written notice on detecting abuse or a security/compliance breach. Separately, a
+    negative wallet balance deactivates BOTH the live and the demo key (402), which is an
+    availability event an agent should expect and handle.
+roadmap:
+  published: false
+  note: >-
+    The product site names capabilities as Live / In development / Coming soon (scam_check,
+    geofencing, quality-on-demand are "in development"; "+20 markets on the roadmap") but
+    there is no dated roadmap page to point at. No `Roadmap` pointer is emitted.

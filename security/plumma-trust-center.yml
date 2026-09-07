@@ -1,0 +1,31 @@
+generated: '2026-09-07'
+method: searched
+probe: true
+published: false
+url: null
+source: >-
+  0-working/probe-security-programs.py (trust./security. subdomains and /trust, /security,
+  /compliance paths — no hit) plus a full read of the provider's own Security & Compliance
+  document, retrieved from the documentation content API at
+  https://connect.plumma.it/plumma-connect-docs/#security
+certifications: []
+note: >-
+  NO TRUST CENTER EXISTS, AND NO CERTIFICATION IS HELD. There is no trust.plumma.it, no
+  security.plumma.it, and no /trust or /compliance path on any Plumma host. What Plumma does
+  publish is a single dated document — "Security & Compliance", V1.1, 21/12/2025 — inside the
+  documentation portal. It is a real and reasonably detailed posture statement, and it is
+  explicit that the standards it names are aspirational: its own heading is "Suggested
+  Reference Standards" and the text reads "While we may not yet hold formal certifications,
+  we are committed to adhering to the best practices defined by the following security and
+  quality standards", listing ISO 27001 and SOC 2 Type I/II. Anyone reading this profile
+  must not credit Plumma with either. The GDPR claim is different in kind — it rests on the
+  stated architecture (a pass-through gateway that persists no personal data at rest) rather
+  than on an audit. No third-party attestation, audit report or certificate registry entry
+  is available to check any of it against. `TrustCenter` is NOT emitted; `Compliance` is,
+  pointing at the published document, because a formal compliance posture document does
+  exist even though no certification does.
+posture_summary: conformance/plumma-conformance.yml#compliance
+evidence:
+- {source: 'https://connect.plumma.it/plumma-connect-docs/#security', status: 200, document: 'Security & Compliance V1.1, 21/12/2025'}
+- {source: 'trust.plumma.it', status: no-such-host}
+- {source: 'security.plumma.it', status: no-such-host}

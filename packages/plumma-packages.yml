@@ -1,0 +1,32 @@
+generated: '2026-09-07'
+method: searched
+source: >-
+  registry.npmjs.org search (plumma, ploomma), pypi.org/pypi/{plumma,ploomma}/json,
+  api.github.com orgs + repository search, and the provider's own Technical Guide
+  (https://connect.plumma.it/plumma-connect-docs/ -> guide-technical_guide-doc)
+package_count: 0
+packages: []
+note: >-
+  No first-party client library exists in any public registry. Searched npm (no package
+  matching "plumma" or "ploomma"), PyPI (both names 404), and GitHub (no `plumma` or
+  `ploomma` organization; repository search returns nothing belonging to Plumma SRL).
+  This is not an inference — the provider says so in its own docs. The Technical Guide's
+  "SDKs and code examples" section reads verbatim: "This section is under construction.
+  In the meantime, the OpenAPI 3.0 descriptor available at the top of this page can be
+  imported directly into Postman or any compatible HTTP client." The published integration
+  path is therefore the OpenAPI descriptor plus a raw HTTP client (cURL / Postman /
+  Insomnia), not a packaged SDK. No `SDKs` pointer is emitted, because none exists.
+registries_checked:
+- {registry: npm, query: 'plumma', result: no-match}
+- {registry: npm, query: 'ploomma', result: no-match}
+- {registry: pypi, name: plumma, status: 404}
+- {registry: pypi, name: ploomma, status: 404}
+- {registry: github, org: plumma, status: 404}
+- {registry: github, org: ploomma, status: 404}
+collections:
+- kind: postman
+  published: false
+  note: >-
+    The Integration Guide reserves a slot for a Postman and an Insomnia collection but
+    ships the literal placeholder "LINK_HERE" for both, so no public collection exists to
+    point at. No `Postman` pointer is emitted.

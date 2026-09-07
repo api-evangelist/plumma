@@ -1,0 +1,251 @@
+{
+  "$schema" : "http://json-schema.org/draft-07/schema#",
+  "$id" : "https://connect.plumma.it/schemas/1.0.2-20260903172027/plmrequest.schema.json",
+  "title" : "PlmRequest",
+  "description" : "Request payload for POST /services/api. Corresponds to model set version 1.0.2-20260903172027. Point a JSON Schema validator at this file to check a payload before sending it. Draft-07 for the widest cross-language validator support.",
+  "x-model-version" : "1.0.2-20260903172027",
+  "definitions" : {
+    "Address" : {
+      "type" : "object",
+      "properties" : {
+        "street" : {
+          "type" : "string",
+          "minLength" : 1,
+          "maxLength" : 100,
+          "examples" : [ "Via Corsini" ]
+        },
+        "street_no" : {
+          "type" : "string",
+          "maxLength" : 10,
+          "pattern" : "[A-Za-z0-9\\-/]+",
+          "examples" : [ "21" ]
+        },
+        "city" : {
+          "type" : "string",
+          "minLength" : 1,
+          "maxLength" : 50,
+          "examples" : [ "Fanano" ],
+          "$comment" : "Server enforces [\\p{L}'\\-\\s]+ ; omitted here for cross-engine portability."
+        },
+        "province" : {
+          "type" : "string",
+          "maxLength" : 50,
+          "examples" : [ "MO" ]
+        },
+        "postcode" : {
+          "type" : "string",
+          "pattern" : "[0-9A-Za-z]{4,10}",
+          "examples" : [ "41021" ]
+        },
+        "national_id" : {
+          "type" : "string",
+          "maxLength" : 50,
+          "pattern" : "[A-Za-z0-9\\-]+"
+        },
+        "country" : {
+          "type" : "string",
+          "pattern" : "[A-Za-z]{2,3}",
+          "description" : "ISO country code (2-3 letters).",
+          "examples" : [ "IT" ]
+        },
+        "normalize" : {
+          "type" : "boolean",
+          "default" : false
+        },
+        "house_number_extension" : {
+          "type" : "string"
+        }
+      },
+      "additionalProperties" : false,
+      "description" : "Structured postal address. Mutually exclusive with inline_address.",
+      "required" : [ "street", "street_no", "city", "postcode", "country" ]
+    },
+    "Dob" : {
+      "type" : "object",
+      "properties" : {
+        "day" : {
+          "type" : "integer",
+          "minimum" : 1,
+          "maximum" : 31,
+          "examples" : [ 28 ]
+        },
+        "month" : {
+          "type" : "integer",
+          "minimum" : 1,
+          "maximum" : 12,
+          "examples" : [ 2 ]
+        },
+        "year" : {
+          "type" : "integer",
+          "minimum" : 1900,
+          "maximum" : 2100,
+          "examples" : [ 1999 ]
+        }
+      },
+      "additionalProperties" : false,
+      "description" : "Date of birth. Either fully specified (day+month+year) or entirely omitted — a partial DOB is rejected.",
+      "dependencies" : {
+        "day" : [ "month", "year" ],
+        "month" : [ "day", "year" ],
+        "year" : [ "day", "month" ]
+      }
+    },
+    "InlineAddress" : {
+      "type" : "object",
+      "properties" : {
+        "address" : {
+          "type" : "string",
+          "minLength" : 1,
+          "examples" : [ "23 Omnia Street, London, EC1A 1BB, GB" ]
+        },
+        "normalize" : {
+          "type" : "boolean",
+          "default" : false
+        }
+      },
+      "additionalProperties" : false,
+      "description" : "Free-text address as a single string. Mutually exclusive with address.",
+      "required" : [ "address" ]
+    },
+    "KycChallenges" : {
+      "type" : "object",
+      "properties" : {
+        "dob" : {
+          "$ref" : "#/definitions/Dob"
+        },
+        "name" : {
+          "$ref" : "#/definitions/Name"
+        },
+        "address" : {
+          "$ref" : "#/definitions/Address"
+        },
+        "email" : {
+          "type" : "string",
+          "format" : "email",
+          "examples" : [ "john.smith@example.com" ]
+        },
+        "inline_address" : {
+          "$ref" : "#/definitions/InlineAddress"
+        },
+        "return_address" : {
+          "type" : "boolean",
+          "description" : "Ask the supplier to return the normalized address block."
+        },
+        "gender" : {
+          "type" : "string"
+        }
+      },
+      "additionalProperties" : false,
+      "description" : "Data to match for `kyc_match`. Must carry EXACTLY ONE address form: `address` (structured) or `inline_address` (free text) — never both, never neither.",
+      "oneOf" : [ {
+        "$comment" : "structured address present, inline absent",
+        "required" : [ "address" ],
+        "not" : {
+          "required" : [ "inline_address" ]
+        }
+      }, {
+        "$comment" : "inline address present, structured absent",
+        "required" : [ "inline_address" ],
+        "not" : {
+          "required" : [ "address" ]
+        }
+      } ]
+    },
+    "Name" : {
+      "type" : "object",
+      "properties" : {
+        "first_name" : {
+          "type" : "string",
+          "minLength" : 2,
+          "maxLength" : 100,
+          "$comment" : "Server also requires ^[\\p{L}][\\p{L}'\\-\\s]*$; \\p{L} is not portable across JSON Schema regex engines, so only length is validated here and the exact character rule stays server-side."
+        },
+        "last_name" : {
+          "type" : "string",
+          "minLength" : 2,
+          "maxLength" : 100
+        },
+        "middle_name" : {
+          "type" : "string",
+          "minLength" : 2,
+          "maxLength" : 100
+        },
+        "name_kana_hankaku" : {
+          "type" : "string"
+        },
+        "name_kana_zenkaku" : {
+          "type" : "string"
+        },
+        "family_name_at_birth" : {
+          "type" : "string",
+          "minLength" : 2,
+          "maxLength" : 100
+        }
+      },
+      "additionalProperties" : false
+    },
+    "allowedCommandValues" : {
+      "type" : "string",
+      "enum" : [ "line_classification", "current_carrier", "issuing_carrier", "porting_timestamp", "porting_logs", "network_presence", "roaming_intel", "deactivation_point", "churn_tracker", "sim_swap", "port_fraud_shield", "digital_footprint", "age_verification", "kyc_match", "divert_detector", "commercial_segment", "tenure_period" ]
+    }
+  },
+  "type" : "object",
+  "properties" : {
+    "number" : {
+      "type" : "string",
+      "minLength" : 1,
+      "pattern" : "^\\+?[1-9][0-9]{6,14}$",
+      "description" : "Phone number in international form. Accepted with or without a leading '+'; the server normalises to E.164 and rejects numbers libphonenumber considers invalid (a regex cannot fully replicate that check).",
+      "examples" : [ "+393273339145", "447808226974" ]
+    },
+    "commands" : {
+      "type" : "array",
+      "items" : {
+        "$ref" : "#/definitions/allowedCommandValues"
+      },
+      "minItems" : 1,
+      "description" : "Non-empty list of commands to run. Duplicate/unknown values are rejected (400)."
+    },
+    "kyc_challenges" : {
+      "$ref" : "#/definitions/KycChallenges"
+    },
+    "tenure_period" : {
+      "type" : "integer",
+      "description" : "Tenure window in days. Required only when the `tenure_period` command is requested.",
+      "examples" : [ 90 ]
+    }
+  },
+  "additionalProperties" : false,
+  "required" : [ "number", "commands" ],
+  "allOf" : [ {
+    "$comment" : "When kyc_match is requested, kyc_challenges is required.",
+    "if" : {
+      "properties" : {
+        "commands" : {
+          "contains" : {
+            "const" : "kyc_match"
+          }
+        }
+      },
+      "required" : [ "commands" ]
+    },
+    "then" : {
+      "required" : [ "kyc_challenges" ]
+    }
+  }, {
+    "$comment" : "When the tenure_period command is requested, the tenure_period value is required.",
+    "if" : {
+      "properties" : {
+        "commands" : {
+          "contains" : {
+            "const" : "tenure_period"
+          }
+        }
+      },
+      "required" : [ "commands" ]
+    },
+    "then" : {
+      "required" : [ "tenure_period" ]
+    }
+  } ]
+}

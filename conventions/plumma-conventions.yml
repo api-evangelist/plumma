@@ -1,0 +1,188 @@
+generated: '2026-09-07'
+method: searched
+source: >-
+  Derived from openapi/plumma-connect-openapi.yml and searched against
+  https://connect.plumma.it/plumma-connect-docs/ — documents `guide-technical_guide-doc`,
+  `guide-integration_guide`, `guide-billing-doc`, `guide-authentication-doc`,
+  `resource-status-and-errors-doc`, `help-telephone_number_format-doc`
+api: openapi/plumma-connect-openapi.yml
+shape: >-
+  One operation. POST /api on https://connect.plumma.it/services takes an E.164 phone
+  number plus a `commands` array and returns one merged JSON document. There are no
+  resources, no path parameters, no collections and no query strings — the command name IS
+  the API surface. Every convention below has to be read against that: several of the
+  usual cross-cutting semantics (pagination, expansion, sparse fields, versioned paths)
+  simply do not apply, and that is a design decision rather than a gap.
+endpoint_divergence:
+  openapi_server: https://connect.plumma.it/services
+  openapi_path: /api
+  docs_curl_example: https://core.ploomma.com/ploommacore/services/connect/api
+  note: >-
+    A second, different base URL appears in the provider's own Integration Guide cURL
+    example. The OpenAPI declares one server, https://connect.plumma.it/services, and the
+    same guide's prose confirms it ("Plumma CONNECT has a single endpoint:
+    https://connect.Plumma.it/services, used for both sandbox and live"). The
+    core.ploomma.com form in the copy-pasteable example is presumably the origin behind it.
+    The contract's servers[] is treated as authoritative here; recorded because an agent
+    copying the guide's cURL will call a different host than one generated from the spec.
+authentication:
+  style: api-key header
+  header: x-plumma-connect-api-key
+  header_alias: x-ploommacore-api-key
+  value: X.509 client certificate, base64-encoded
+  bearer: >-
+    Explicitly absent. The Integration Guide warns: "If you're coming from other APIs, the
+    natural instinct might be to look for an Authorization: Bearer header. It doesn't
+    exist here."
+  environment_selector: >-
+    x-plumma-connect-app-id — present means live, absent means sandbox. Omitting it does
+    not fail; it silently answers from canned data.
+  detail: authentication/plumma-authentication.yml
+pagination:
+  applicable: false
+  note: >-
+    No collection endpoints exist. Two response blocks are arrays sized by the operator
+    (porting_logs, and churn_tracker capped at the 10 most recent deactivation events);
+    neither is paged, cursored or offset.
+expansion:
+  applicable: false
+  note: >-
+    The `commands` array is the projection mechanism. You get exactly the response blocks
+    for the commands you asked for and nothing else, so field selection is request-side by
+    construction rather than a sparse-fieldset parameter.
+metadata:
+  applicable: false
+  note: No customer-attachable metadata field exists on the request or the response.
+request_tracing:
+  header: X-Correlation-ID
+  direction: response only
+  format: uuid
+  rule: >-
+    Server-generated on every call, success or error, and echoed on the response header.
+    The contract is explicit that the client must NEVER send it. It is also carried inside
+    the RFC 7807 problem body as `correlation_id`, so an error is traceable from the body
+    alone. Quote it in support requests.
+versioning:
+  scheme: model-set string, not a URL or header
+  current: 1.0.2-20260903172027
+  location: info.version in the OpenAPI
+  runtime_check: >-
+    The SAME string is returned in the `version` field of every PlmResponse. An agent can
+    confirm at runtime that the service matches the contract it was built against by
+    comparing response.version with info.version — a genuinely good and uncommon
+    affordance, and the only versioning mechanism this API has.
+  path_versioning: none — the path is /api, unversioned
+  header_versioning: none
+  negotiation: none
+error_envelope:
+  transport_layer:
+    format: rfc7807
+    media_type: application/problem+json
+    fields: [type, title, status, detail, instance, path, correlation_id]
+    note: >-
+      Declared on every 4xx/5xx in the OpenAPI. `path` and `correlation_id` are
+      Plumma extensions to the standard members; `type` is `about:blank` in the published
+      example, so problem types are not individually addressable URIs.
+  application_layer:
+    format: numeric status inside a 200 body
+    fields: [status, status_message]
+    note: >-
+      THE IMPORTANT ONE FOR AN AGENT. HTTP 200 does not mean every command succeeded. The
+      contract says so directly: "HTTP 200 does not by itself mean every command was
+      served — read `status`." Outcomes 0/1/2/4/5 live in the body, and per-command outcome
+      lives in a bracketed suffix of status_message plus the packed `cmd_enc` bitfield.
+      See errors/plumma-status-codes.yml.
+  detail: errors/plumma-problem-types.yml
+partial_success:
+  supported: true
+  signal: status = 4 ("Partial reply")
+  rule: >-
+    A single request fans out per command; commands are routed independently and some may
+    be served while others are skipped for lack of country coverage. The response carries
+    only the blocks that were served. A missing block is not an error field — it is an
+    absence, and status_message's "Commands [...] not available in [CC]" note is what
+    names it. cmd_enc packs a 2-bit outcome (0 success, 1 client error, 2 provider error)
+    per command ordinal for programmatic consumers.
+  billing_coupling: >-
+    Partial success is also the billing boundary: served commands are billed, skipped ones
+    are not. Reading the outcome per command is therefore a cost control, not just error
+    handling.
+idempotency:
+  supported: false
+  coverage: none
+  scope: []
+  header: null
+  applicability: >-
+    The API has no create/update/delete surface — every command is a lookup — but it is
+    NOT free to retry: each served command draws down a prepaid Euro wallet. A duplicate
+    call is a duplicate charge.
+  note: >-
+    NO REPLAY PROTECTION IS PUBLISHED. There is no Idempotency-Key header, no client-supplied
+    request id (the correlation id is server-generated and explicitly must not be sent by
+    the client), and no documented dedupe window. The docs advise retrying on status 5
+    ("safe to retry. This usually reflects a transient issue") without stating whether a
+    retried call that was already served is billed twice. No `Idempotency` pointer is
+    emitted for this provider, and none should be until a mechanism exists.
+reversibility:
+  write_surface: none
+  grade: na
+  operations: []
+  note: >-
+    There is nothing to reverse at the API layer: the single operation reads operator
+    signals and creates no resource an agent could cancel, void, refund, restore or undo.
+    The only consequence of a call is a wallet drawdown, and that is settled commercially,
+    not through an API operation.
+  commercial_reversal:
+    exists: true
+    mechanism: service credits, not an API call
+    window: 30 days from the transaction or the incident
+    conditions: >-
+      Consumed traffic is non-refundable as a rule. Credits are available only where a
+      failure is attributable to Plumma's own infrastructure and monthly uptime falls below
+      the subscribed commitment; failures caused by mobile network operators are excluded.
+      Approved refunds are issued as service credits or free-of-charge calls rather than
+      cash. SLA Art. 6.2 sets a stricter 7-day window for service-credit claims tied to the
+      99.5% availability target, so the two published windows differ.
+    source: https://connect.plumma.it/plumma-connect-docs/
+dry_run_mode:
+  supported: true
+  mechanism: >-
+    Genuinely present, and unusually clean. Omit x-plumma-connect-app-id (or authenticate
+    with the demo key) and the identical request runs against canned data, free, with the
+    identical response shape. That is a rehearsal facility an agent can use without a
+    separate host or a separate contract — the marker "This response is for demo purpose
+    only" in status_message tells it which mode it got.
+  caveat: >-
+    It is also a footgun in the other direction: the same omission silently downgrades an
+    intended live call to a sandbox answer instead of failing.
+  detail: sandbox/plumma-sandbox.yml
+rate_limit_signaling:
+  headers: none published
+  detail: rate-limits/plumma-rate-limits.yml
+  note: >-
+    Numbers are documented (2 RPS sandbox, 5 RPS production, 180 sandbox commands/day) but
+    no X-RateLimit-*/RateLimit-*/Retry-After header is declared anywhere, so remaining
+    budget is not observable at runtime.
+data_formats:
+  content_type: application/json
+  phone_numbers: >-
+    ITU-T E.164. Accepted with or without the leading "+"; spaces, dashes, dots and
+    parentheses are rejected. Schema pattern: ^\+?[1-9][0-9]{6,14}$.
+  dates: >-
+    ISO 8601 for every temporal field — timestamps, porting dates, deactivation events.
+    Stated as a core concept in the Technical Guide.
+  countries: ISO 3166-1 alpha-2/alpha-3 (Address.country pattern [A-Za-z]{2,3})
+  networks: MCC/MNC pairs for carrier identity; SPID/LRN/OCN for North American routing
+pii_posture: >-
+  Responses are documented never to contain raw PII — they return booleans, enumerated
+  risk indicators and match scores derived from operator signalling, not the underlying
+  subscriber data. KYC challenge values are supplied by the caller and scored, not
+  returned. This is the provider's stated gateway principle: nothing is persisted at rest.
+cross_links:
+  authentication: authentication/plumma-authentication.yml
+  errors: errors/plumma-problem-types.yml
+  status_codes: errors/plumma-status-codes.yml
+  lifecycle: lifecycle/plumma-lifecycle.yml
+  rate_limits: rate-limits/plumma-rate-limits.yml
+  sandbox: sandbox/plumma-sandbox.yml
+  data_model: data-model/plumma-data-model.yml

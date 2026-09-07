@@ -1,0 +1,66 @@
+generated: '2026-09-07'
+method: searched
+source: >-
+  https://connect.plumma.it/plumma-connect-docs/ — documents `guide-technical_guide-doc`
+  ("Rate limiting"), `guide-integration_guide`, `resource-status-and-errors-doc`,
+  `compliance-usage-limitations` (SLA Art. 4.1) and `compliance-terms-and-conditions`
+  (ToS Art. 2.3, 4.1)
+limit_count: 3
+limits:
+- scope: per-api-key
+  environment: sandbox
+  window: 1s
+  limit: 2
+  unit: requests
+  burst: null
+  note: Enforced per API key and expressed by the provider in requests per second (RPS).
+- scope: per-api-key
+  environment: production
+  window: 1s
+  limit: 5
+  unit: requests
+  burst: null
+  note: >-
+    "The production rate limit can be increased upon request." The SLA (Art. 4.1) adds
+    that a default limit may be applied at Plumma's discretion to protect the
+    infrastructure and that the agreed threshold is set in the Technical Addendum.
+- scope: per-api-key
+  environment: sandbox
+  window: 1d
+  limit: 180
+  unit: commands
+  note: >-
+    Counted in COMMANDS executed across all requests in a calendar day, not in API calls —
+    one request carrying 18 commands consumes 18 of the budget. The limit is unchanged
+    after an account goes live. CONFLICT, recorded as published: the Terms of Service
+    (Art. 2.3a) states "a maximum API call limit 20/day … could be increased asking your
+    account manager" for the same sandbox, while the Technical Guide and Integration Guide
+    both state 180 commands/day.
+exhaustion:
+  status_codes:
+  - code: 402
+    applies_to: demo/sandbox keys only
+    body: >-
+      A JSON object carrying "code": "rate.limit.exceeded" and a message naming the daily
+      limit. Documented in "Status and Common Errors" as the dedicated status reserved for
+      demo-certificate throttling; production keys are not subject to it.
+    note: >-
+      402 is overloaded on this API — it is also returned when the prepaid wallet balance
+      reaches zero, which restricts access until a top-up.
+  - code: 429
+    applies_to: production
+    body: unspecified
+    note: >-
+      SLA Art. 4.1: "Excessive requests exceeding the agreed threshold may return an
+      HTTP 429 (Too Many Requests) error." No response body shape is published for it and
+      the OpenAPI does not declare a 429 response on POST /api.
+response_headers:
+  published: false
+  observed: []
+  note: >-
+    NO RUNTIME RATE-LIMIT SIGNAL IS PUBLISHED. The provider documents the numbers but not
+    the headers: neither the docs nor the OpenAPI declare X-RateLimit-*, RateLimit-*
+    (RFC 9331 style) or Retry-After, and the only response header the contract defines is
+    X-Correlation-ID. An agent cannot read its remaining budget from a response — it can
+    only count locally and react to a 402/429 after the fact. This is the single largest
+    runtime-semantics gap on this API and it is cheap for the provider to close.

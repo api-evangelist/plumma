@@ -1,0 +1,145 @@
+generated: '2026-09-07'
+method: searched
+source: >-
+  https://connect.plumma.it/plumma-connect-docs/ — `resource-status-and-errors-doc`,
+  `guide-billing-doc`, `guide-integration_guide`; cross-checked against the PlmResponse
+  schema in openapi/plumma-connect-openapi.yml
+format: in-body numeric status
+summary: >-
+  The application-level error registry. Every authenticated call returns HTTP 200; the real
+  outcome is the `status` integer and the `status_message` string inside PlmResponse. Both
+  are recomputed by the Merge step after every routed supplier has answered. This registry
+  is also the BILLING registry — 0 and 4 are billable, 1, 2 and an empty 5 are not — so an
+  agent that ignores it both mishandles errors and misreads its own spend.
+envelope:
+  fields: [status, status_message, version]
+  http_status_always: 200
+codes:
+- code: 0
+  message: OK
+  meaning: >-
+    Every requested command could be routed for the resolved country, no command was
+    skipped, and the request passed validation.
+  billed: yes — all served commands
+  action: none
+- code: 1
+  message: Invalid number
+  meaning: >-
+    The MSISDN is not valid E.164 — bad country code, wrong length for the identified
+    region, or formatting characters. Evaluated only after the coverage/routing checks pass.
+  billed: no
+  action: >-
+    Fix the number format before retrying. A validation failure, not a network or server
+    issue; retrying unchanged will not help.
+- code: 2
+  message: Not allowed destination / No commands available in country [CC]
+  meaning: >-
+    None of the requested commands could be routed for the resolved destination country —
+    no supplier is configured for that country on this account. The request is
+    short-circuited before any supplier is contacted, and status_message names the country.
+  billed: no
+  action: >-
+    Do not retry; the outcome will not change. If coverage was expected, raise it with
+    support. A burst of out-of-coverage traffic generates no charges — EXCEPT for the
+    global commands (current_carrier, line_classification, issuing_carrier,
+    digital_footprint, roaming_intel), which are served and billed for every country.
+- code: 4
+  message: Partial reply
+  meaning: >-
+    At least one requested command could not be routed for the resolved country while at
+    least one other could. Routed commands still return their data blocks; skipped ones are
+    simply absent and are named in the "Commands [...] not available in [CC]" note.
+  billed: yes — served commands only
+  action: >-
+    Read the response command by command rather than stopping at the top-level status.
+    Status 4 is a flag telling you to look inside, not a failure.
+- code: 5
+  message: Unknown error
+  meaning: An unexpected internal error while evaluating the request or coverage.
+  billed: no charge for unserved commands
+  action: >-
+    Safe to retry — usually transient. If it persists, contact support with the full
+    request payload and the X-Correlation-ID response header value.
+status_message_grammar:
+  note: >-
+    status_message is assembled dynamically by the Merge step and is no longer one static
+    sentence per code. Up to four parts are appended in this fixed order.
+  parts:
+  - order: 1
+    name: base outcome text
+    values:
+    - 'No commands available in country [CC]'
+    - Partial reply merged from multiple operators
+    - Response from one supplier
+    - Unknown error
+  - order: 2
+    name: skipped-commands note
+    format: '- Commands [a, b, ...] not available in [CC]'
+    when: one or more requested commands had no coverage for the resolved country
+  - order: 3
+    name: demo marker
+    value: '- This response is for demo purpose only'
+    when: the call was served by the sandbox engine
+    note: This exact substring is the documented test for "not charged".
+  - order: 4
+    name: per-command outcome block
+    format: '[cmd_enc=N] [command: SUPPLIER : message | command: SUPPLIER : message]'
+    note: >-
+      One human-readable entry per ROUTED command, naming the supplier that served it and
+      either the supplier's own reason (e.g. "no data", a timeout description) or a generic
+      OK / failed. Commands never routed at all do not appear here — they are in part 2.
+  example: >-
+    Partial reply merged from multiple operators - Commands [scam_check] not available in
+    [IT] [cmd_enc=17] [current_carrier: MNO (A) : OK | kyc_match: MNO (B) : no data]
+cmd_enc:
+  purpose: >-
+    A single integer packing the outcome of every possible command into 2 bits each, for
+    programmatic consumers. The provider marks it DEBUG ONLY.
+  encoding: bit position = ordinal * 2
+  values:
+    0: success
+    1: client error
+    2: provider error
+  caveat: >-
+    A command that was not requested, or was never routed, also keeps the default value 0.
+    The field alone cannot distinguish "succeeded" from "never asked" — cross-reference
+    against the commands you sent and the "not available" note in status_message.
+  ordinals:
+    0: line_classification
+    1: current_carrier
+    2: issuing_carrier
+    3: porting_timestamp
+    4: porting_logs
+    5: network_presence
+    6: roaming_intel
+    7: deactivation_point
+    8: churn_tracker
+    9: sim_swap
+    10: port_fraud_shield
+    11: digital_footprint
+    12: age_verification
+    13: kyc_match
+    14: divert_detector
+    15: commercial_segment
+    16: tenure_period
+    17: qdr_history
+    18: number_verification
+    19: scam_check
+  divergence_note: >-
+    The cmd_enc ordinal table names 20 commands. The OpenAPI's allowedCommandValues enum
+    accepts only 17 — qdr_history, number_verification and scam_check are addressable in
+    the error encoding and documented individually in the Commands reference, but are not
+    in the machine-readable request enum. The public product page counts 19 commands and
+    lists scam_check, geofencing and quality-on-demand as "in development". Recorded as
+    published; the contract and the docs do not agree on the command set.
+sentinel_values:
+  note: >-
+    Several commands use in-band sentinels rather than absence, and the distinction is
+    documented carefully enough to be worth recording.
+  values:
+  - {field: simswap.risk_indicator, value: 0, meaning: 'the operator watched and found no swap in the bounded window'}
+  - {field: simswap.risk_indicator, value: -1, meaning: 'the operator holds nothing for this identifier at all (upstream 422 SERVICE_NOT_APPLICABLE) — still a served, billed answer'}
+  - {field: kyc_results.*_score, value: -1, meaning: 'the operator holds no data for that field — a served result, and billed'}
+  - {field: divert_detector, value: '0 | 1 | -1 | -2', meaning: 'call-forwarding state, per the Commands reference'}
+  - {field: age_verification.verified, value: '-2 .. 1', meaning: 'age-threshold verification outcome, per the Commands reference'}
+  - {block: any, value: absent, meaning: 'the command was not routed, or the supplier call got no answer — different from a sentinel'}

@@ -1,0 +1,34 @@
+generated: '2026-09-07'
+method: generated
+source: >-
+  Grounded in openapi/plumma-connect-openapi.yml — the single operationId `connectApi` was
+  verified against the spec; no operation, field or command name below was invented. Runtime
+  rules come from conventions/, errors/, sandbox/, plans/ and rate-limits/ in this repo,
+  each of which cites the provider document it was read from.
+note: >-
+  This API has ONE operation, so skills are organised by the flow an agent is actually
+  running rather than by endpoint. Each one is the same POST /api call with a different
+  `commands` payload and, more importantly, a different way of reading the answer.
+skills:
+- file: plumma-sim-swap-fraud-check.md
+  name: SIM-swap fraud check
+  api: openapi/plumma-connect-openapi.yml
+  operations: [connectApi]
+  commands: [sim_swap]
+- file: plumma-kyc-match.md
+  name: KYC match against operator records
+  api: openapi/plumma-connect-openapi.yml
+  operations: [connectApi]
+  commands: [kyc_match]
+- file: plumma-multi-command-partial-reply.md
+  name: Multi-command calls and partial replies
+  api: openapi/plumma-connect-openapi.yml
+  operations: [connectApi]
+  commands: [current_carrier, line_classification, sim_swap]
+excluded:
+- skill: number_verification / scam_check / device_location
+  reason: >-
+    Documented by the provider and present in the cmd_enc ordinal table, but absent from the
+    OpenAPI allowedCommandValues enum, so a client built from the contract cannot send them.
+    Writing a skill around a command the contract rejects would teach an agent to make a call
+    that fails. Recorded in vocabulary/plumma-commands-vocabulary.yml instead.

@@ -1,0 +1,115 @@
+generated: '2026-09-07'
+method: searched
+source: >-
+  https://connect.plumma.it/plumma-connect-docs/ — documents `guide-introduction-doc`,
+  `guide-technical_guide-doc`, `guide-integration_guide`, `guide-authentication-doc`,
+  `help-subscription_status-doc`, `compliance-terms-and-conditions` (Art. 2); plus the
+  x-plumma-connect-app-id parameter description in
+  https://connect.plumma.it/docs/openapi/connect-api.json
+published: true
+console_url: https://connect.ploomma.com/
+summary: >-
+  Plumma Connect ships a real sandbox and it is unusual in one important way: THERE IS NO
+  SEPARATE SANDBOX HOST. Live and demo are the same endpoint and the same request; what
+  decides which engine answers is which credential you present (and, in the OpenAPI, whether
+  the x-plumma-connect-app-id header is sent at all). The Integration Guide states it
+  plainly: "your Postman/Insomnia environment variables should hold your key, not a base
+  URL. Swapping between demo and live is a matter of swapping which key is active, not
+  which server you're pointed at."
+separation:
+  model: credential-selected, single endpoint
+  endpoint: https://connect.plumma.it/services
+  keys:
+  - name: Demo key
+    issued: automatically at onboarding, shown on first entry to the sandbox
+    valid_for: sandbox calls only
+    billable: false
+  - name: Live key
+    issued: after subscribing (Stripe checkout in the console)
+    valid_for: live calls
+    billable: true
+  key_handling: >-
+    Keys can be copied ONCE. Plumma states it does not store them and they cannot be
+    retrieved afterwards. Revoke or regenerate from the API keys menu; regenerating
+    invalidates the previous key immediately, so the integration must be updated before,
+    not after.
+  key_format: >-
+    A cryptographic credential encoding ASN.1 fields — Application Owner, Purpose
+    (sandbox vs live, declared at subscription) and Fingerprint (used to tag and trace
+    requests). The OpenAPI describes the header value as an X.509 client certificate,
+    base64-encoded.
+  header_divergence: >-
+    The OpenAPI names the auth header `x-plumma-connect-api-key`; every prose document —
+    Authentication guide, Integration guide, Status and Errors — names it
+    `x-ploommacore-api-key`. Both are published by Plumma and they do not agree. An agent
+    integrating from the spec and one integrating from the guide will send different
+    headers. Recorded, not resolved.
+  openapi_switch:
+    parameter: x-plumma-connect-app-id
+    required: false
+    behaviour: >-
+      Present -> the call runs LIVE against real suppliers as that application, and the
+      (certificate, application) pair must be admitted or the call is refused 403.
+      Absent -> the call runs in the SANDBOX against canned data and may only ask about a
+      demo number; any other number is refused 401. The spec is explicit that this is a
+      trap: "a live call without it does not fail, it silently becomes a sandbox call."
+limits:
+  rate_limit: 2 requests per second
+  daily_commands: 180 commands per calendar day (counted in commands, not requests)
+  daily_commands_conflict: >-
+    Terms of Service Art. 2.3a states "a maximum API call limit 20/day" for the same
+    sandbox. The two provider documents disagree; both are recorded.
+  exhaustion_status: '402 with body {"code": "rate.limit.exceeded"}'
+  expiry: none — the sandbox has no time limit; an account may stay in it indefinitely
+  after_go_live: >-
+    Once a live key exists, calls made FROM the console sandbox use the live key, not the
+    demo key. Demo calls after go-live must be made from the integrator's own environment
+    with the demo key set explicitly.
+test_identifiers:
+  kind: demo MSISDNs (canned identities)
+  authoritative_list: >-
+    The definitive demo-number list is shown in the console sandbox form and is
+    country-highlighted per mock user; it is not published as a static page. The values
+    below are the ones Plumma publishes itself, verbatim, in its OpenAPI request/response
+    examples and in the Integration Guide's cURL example.
+  values:
+  - number: '+393273339145'
+    country: IT
+    source: 'openapi request examples simSwap and kycMatchStructured'
+  - number: '+447808226974'
+    country: GB
+    source: 'openapi request examples kycMatchInline and wideCall'
+  - number: '+393498410941'
+    country: IT
+    source: 'integration guide cURL example'
+  - number: '+5581986179310'
+    country: BR
+    source: 'openapi 200 response example simSwapNoSwapFound'
+  - number: '+5519992858171'
+    country: BR
+    source: 'openapi 200 response example simSwapNotApplicable'
+  real_numbers: >-
+    Sandbox calls against a real (non-demo) number are refused 401 while the account is
+    demo-only. ToS Art. 2.2 forbids submitting real personal data to the sandbox
+    altogether. A subscriber account may test real numbers from the sandbox form.
+  proof_of_concept_live: >-
+    ToS Art. 2.3b: after functional testing and a signed NDA, a client may request and
+    execute a maximum of ten (10) live API commands per month for final verification.
+fixtures:
+  responses: >-
+    Sandbox responses mirror the structure and value ranges of live responses exactly, so
+    an integration validated in sandbox behaves the same in production. The only
+    difference is the data.
+  marker: >-
+    Every sandbox response carries the note "This response is for demo purpose only"
+    appended to status_message. That string is the machine-readable way to tell a demo
+    response from a live one, and the Billing guide uses it as the definitive "not
+    charged" test.
+  triggers: >-
+    None published. There is no test-clock, no fixture-trigger tooling and no documented
+    way to force a specific outcome (a swap found vs no swap vs -1) — the mock user you
+    pick determines the answer.
+coverage_note: >-
+    The public marketing site states sandbox coverage across Italy, Spain, the UK, France
+    and Germany against 17 live countries in production, so a command that is uncovered in
+    sandbox may still be covered live and vice versa.

@@ -1,0 +1,90 @@
+overlay: 1.0.0
+info:
+  title: API Evangelist enhancements for Plumma CONNECT API
+  version: 1.0.0
+extends: openapi/plumma-connect-openapi.yml
+x-generated: '2026-09-07'
+x-method: generated
+x-source: >-
+  Authored by API Evangelist from the artifacts in this repository. It records OUR
+  annotations against Plumma's contract and never mutates
+  openapi/_original/plumma-connect-api.json.
+actions:
+- target: $.info
+  update:
+    x-apievangelist-profile: https://apis.io/provider/plumma/
+    x-apievangelist-artifacts:
+      conventions: conventions/plumma-conventions.yml
+      errors: errors/plumma-problem-types.yml
+      status_codes: errors/plumma-status-codes.yml
+      vocabulary: vocabulary/plumma-commands-vocabulary.yml
+      data_model: data-model/plumma-data-model.yml
+      sandbox: sandbox/plumma-sandbox.yml
+      rate_limits: rate-limits/plumma-rate-limits.yml
+      plans: plans/plumma-plans-pricing.yml
+      lifecycle: lifecycle/plumma-lifecycle.yml
+    x-apievangelist-notes:
+    - >-
+      Aggregation gateway over GSMA Open Gateway operator APIs. The contract is
+      deliberately not CAMARA-shaped — one POST with a commands array instead of one
+      endpoint per capability — but the KYC challenge schema carries the CAMARA KnowYourCustomer
+      Match attribute vocabulary verbatim in snake_case.
+- target: $.paths['/api'].post
+  update:
+    x-apievangelist-agent-notes:
+    - >-
+      HTTP 200 IS NOT SUCCESS. Read PlmResponse.status (0 OK, 1 invalid number, 2 no
+      coverage, 4 partial reply, 5 unknown error) and the per-command breakdown appended to
+      status_message. A missing result block means the command was not routed; it is not an
+      error field.
+    - >-
+      BILLING IS PER SERVED COMMAND, NOT PER CALL. status 0 and 4 are billable (4 only for
+      the commands actually served); 1, 2 and an empty 5 cost nothing. Global commands
+      (current_carrier, line_classification, issuing_carrier, digital_footprint,
+      roaming_intel) are billed for every country and do not benefit from the no-coverage
+      exemption.
+    - >-
+      NO IDEMPOTENCY KEY EXISTS. A retried call that was already served is a second
+      drawdown on the prepaid wallet. The docs advise retrying on status 5 without stating
+      whether the earlier attempt was billed.
+    - >-
+      NO RATE-LIMIT HEADERS ARE RETURNED. Limits are 2 RPS sandbox and 5 RPS production,
+      plus 180 sandbox commands per day, but remaining budget is not observable at runtime.
+      Exhaustion is 402 (demo) or 429 (production).
+    - >-
+      The docs name the auth header x-ploommacore-api-key while this contract names it
+      x-plumma-connect-api-key. Both are published by Plumma and they do not agree.
+    x-agentic-access:
+      action-class: acting
+      consequence: write
+      note: >-
+        Classified `acting`/`write` rather than `read` despite being a lookup: every served
+        command spends real money from a prepaid balance and there is no reversal
+        operation, so an agent must treat it as a spending action.
+- target: $.paths['/api'].post.responses['200']
+  update:
+    x-apievangelist-note: >-
+      Two error layers share this response. Transport failures are RFC 7807 problem
+      documents on 4xx/5xx; application failures are a numeric status inside this 200 body.
+      See errors/plumma-status-codes.yml for the full registry, the status_message grammar
+      and the cmd_enc bitfield decoding.
+- target: $.components.schemas.allowedCommandValues
+  update:
+    x-apievangelist-note: >-
+      This enum is the API's real surface — 17 values. Plumma's own documentation and the
+      cmd_enc ordinal table describe at least six more (enhanced_type, qdr_history,
+      number_verification, scam_check, device_swap, device_location) that this enum will
+      not accept. See vocabulary/plumma-commands-vocabulary.yml.
+- target: $.components.schemas.KycChallenges
+  update:
+    x-apievangelist-note: >-
+      Carries the CAMARA KnowYourCustomer "Match" attribute vocabulary in snake_case —
+      name_kana_hankaku, name_kana_zenkaku, family_name_at_birth, house_number_extension,
+      national_id (CAMARA idDocument). A caller who already speaks CAMARA KYC Match can map
+      these fields mechanically.
+- target: $.components.securitySchemes.ApiKeyAuth
+  update:
+    x-apievangelist-note: >-
+      Docs name this header x-ploommacore-api-key. Two keys exist per account (demo and
+      live) and both stay active; they are copyable once and are not recoverable from
+      Plumma afterwards.

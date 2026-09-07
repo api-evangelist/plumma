@@ -1,0 +1,105 @@
+generated: '2026-09-07'
+method: probed
+source: live GET of the named /.well-known/ path list on every host this record knows
+note: >-
+  Nothing was served. Four hosts probed — the registrable domain's www host, the product
+  host that carries the docs and the OpenAPI, the console/sandbox SPA, and the API host
+  named in the integration guide. Every path on connect.plumma.it and core.ploomma.com
+  returned 404. www.plumma.it is fronted by an S3-style origin that answers every unknown
+  path with an XML `AccessDenied` 403, and connect.ploomma.com is a WaveMaker Angular SPA
+  whose catch-all route answers 200 with the same 1,825-byte index.html for every path —
+  including the negative control that cannot exist. No WellKnown and no SecurityTxt pointer
+  is emitted: this file records an absence, not a surface.
+hit_count: 0
+path_echo_control: passed
+hosts:
+- host: https://connect.plumma.it
+  documents:
+  - {path: /.well-known/security.txt, status: 404}
+  - {path: /.well-known/openid-configuration, status: 404}
+  - {path: /.well-known/oauth-authorization-server, status: 404}
+  - {path: /.well-known/oauth-protected-resource, status: 404}
+  - {path: /.well-known/api-catalog, status: 404}
+  - {path: /.well-known/api-catalog.json, status: 404}
+  - {path: /.well-known/ai-plugin.json, status: 404}
+  - {path: /.well-known/ucp.json, status: 404}
+  - {path: /.well-known/acp.json, status: 404}
+  - {path: /.well-known/aauth-resource.json, status: 404}
+  - {path: /.well-known/apis.json, status: 404}
+  - {path: /apis.json, status: 404}
+  - {path: /apis.yml, status: 403}
+  - {path: /.well-known/agent-card.json, status: 404}
+  - {path: /.well-known/agent.json, status: 404}
+  negative_control:
+    path: /.well-known/plumma-negative-control-7f3ab91c.json
+    status: 404
+    result: passed
+- host: https://www.plumma.it
+  note: >-
+    Every path, including the negative control, returns HTTP 403 with an 111-byte XML body
+    `<Error><Code>AccessDenied</Code></Error>` — an object-store origin default, not a
+    document. Treated as a blanket miss.
+  documents:
+  - {path: /.well-known/security.txt, status: 403}
+  - {path: /.well-known/openid-configuration, status: 403}
+  - {path: /.well-known/oauth-authorization-server, status: 403}
+  - {path: /.well-known/oauth-protected-resource, status: 403}
+  - {path: /.well-known/api-catalog, status: 403}
+  - {path: /.well-known/api-catalog.json, status: 403}
+  - {path: /.well-known/ai-plugin.json, status: 403}
+  - {path: /.well-known/ucp.json, status: 403}
+  - {path: /.well-known/acp.json, status: 403}
+  - {path: /.well-known/aauth-resource.json, status: 403}
+  - {path: /.well-known/apis.json, status: 403}
+  - {path: /apis.json, status: 403}
+  - {path: /apis.yml, status: 403}
+  - {path: /.well-known/agent-card.json, status: 403}
+  - {path: /.well-known/agent.json, status: 403}
+  negative_control:
+    path: /.well-known/plumma-negative-control-7f3ab91c.json
+    status: 403
+    result: passed
+- host: https://connect.ploomma.com
+  note: >-
+    The Plumma Connect console and sandbox — a WaveMaker/Angular single-page app. Its
+    catch-all route answers HTTP 200 with the identical 1,825-byte SPA shell for every
+    path probed, the negative control included, so no 200 here is a document. Soft-404
+    control failed; every hit on this host is discarded.
+  soft_404_control:
+    path: /.well-known/plumma-negative-control-7f3ab91c.json
+    status: 200
+    bytes: 1825
+    result: failed
+  documents:
+  - {path: /.well-known/security.txt, status: 200, file: null, verdict: spa-shell}
+  - {path: /.well-known/openid-configuration, status: 200, file: null, verdict: spa-shell}
+  - {path: /.well-known/oauth-authorization-server, status: 200, file: null, verdict: spa-shell}
+  - {path: /.well-known/oauth-protected-resource, status: 200, file: null, verdict: spa-shell}
+  - {path: /.well-known/api-catalog, status: 200, file: null, verdict: spa-shell}
+  - {path: /.well-known/ai-plugin.json, status: 200, file: null, verdict: spa-shell}
+  - {path: /.well-known/aauth-resource.json, status: 200, file: null, verdict: spa-shell}
+  - {path: /.well-known/apis.json, status: 200, file: null, verdict: spa-shell}
+  - {path: /apis.json, status: 200, file: null, verdict: spa-shell}
+  - {path: /.well-known/agent-card.json, status: 200, file: null, verdict: spa-shell}
+  - {path: /.well-known/agent.json, status: 200, file: null, verdict: spa-shell}
+- host: https://core.ploomma.com
+  note: >-
+    The API host named in the provider's own integration guide
+    (POST https://core.ploomma.com/ploommacore/services/connect/api). Every path 404s,
+    including the negative control.
+  documents:
+  - {path: /.well-known/security.txt, status: 404}
+  - {path: /.well-known/openid-configuration, status: 404}
+  - {path: /.well-known/oauth-authorization-server, status: 404}
+  - {path: /.well-known/oauth-protected-resource, status: 404}
+  - {path: /.well-known/api-catalog, status: 404}
+  - {path: /.well-known/ai-plugin.json, status: 404}
+  - {path: /.well-known/aauth-resource.json, status: 404}
+  - {path: /.well-known/apis.json, status: 404}
+  - {path: /apis.json, status: 404}
+  - {path: /.well-known/agent-card.json, status: 404}
+  - {path: /.well-known/agent.json, status: 404}
+  negative_control:
+    path: /.well-known/plumma-negative-control-7f3ab91c.json
+    status: 404
+    result: passed

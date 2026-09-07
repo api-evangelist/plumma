@@ -1,0 +1,152 @@
+{
+  "x-source": "openapi/plumma-connect-openapi.yml#/paths/~1api/post — extracted verbatim, unmodified",
+  "operationId": "connectApi",
+  "endpoint": "POST https://connect.plumma.it/services/api",
+  "requests": {
+    "simSwap": {
+      "summary": "SIM-swap check (single command)",
+      "value": {
+        "number": "+393273339145",
+        "commands": [
+          "sim_swap"
+        ]
+      }
+    },
+    "kycMatchStructured": {
+      "summary": "KYC match with a structured address",
+      "value": {
+        "number": "+393273339145",
+        "commands": [
+          "kyc_match"
+        ],
+        "kyc_challenges": {
+          "name": {
+            "first_name": "Luigi",
+            "last_name": "Armani"
+          },
+          "dob": {
+            "day": 28,
+            "month": 2,
+            "year": 1999
+          },
+          "address": {
+            "street": "Via Corsini",
+            "street_no": "21",
+            "city": "Fanano",
+            "province": "MO",
+            "postcode": "41021",
+            "country": "IT"
+          }
+        }
+      }
+    },
+    "kycMatchInline": {
+      "summary": "KYC match with a free-text (inline) address",
+      "value": {
+        "number": "+447808226974",
+        "commands": [
+          "kyc_match"
+        ],
+        "kyc_challenges": {
+          "name": {
+            "first_name": "John",
+            "last_name": "Smith"
+          },
+          "inline_address": {
+            "address": "23 Omnia Street, London, EC1A 1BB, GB",
+            "normalize": true
+          }
+        }
+      }
+    },
+    "wideCall": {
+      "summary": "Several commands at once",
+      "value": {
+        "number": "+447808226974",
+        "commands": [
+          "current_carrier",
+          "line_classification",
+          "sim_swap"
+        ]
+      }
+    }
+  },
+  "responses": {
+    "simSwapServed": {
+      "summary": "SIM-swap served (the operator sent the date of the last swap)",
+      "value": {
+        "number": "+393273339145",
+        "simswap": {
+          "last_day": 0,
+          "risk_indicator": 4,
+          "simswap_min_threshold": 720,
+          "date": "2018-10-17T23:00:00.000Z",
+          "swapped": false,
+          "swapped_max_age": 240
+        },
+        "status": 0,
+        "status_message": "Response from one supplier",
+        "version": "1.0.2-20260704190444"
+      }
+    },
+    "simSwapNoSwapFound": {
+      "summary": "SIM-swap served (0 = the operator watched and found no swap)",
+      "description": "The operator holds no swap for this number, and sent no date to place one with. `swapped` / `swapped_max_age` carry the bounded claim - nothing in the last 240 hours - while the absent thresholds say there is no swap to bound. Not to be confused with `-1`, which is the operator having nothing to answer with at all.",
+      "value": {
+        "number": "+5581986179310",
+        "simswap": {
+          "last_day": 0,
+          "risk_indicator": 0,
+          "swapped": false,
+          "swapped_max_age": 240
+        },
+        "status": 0,
+        "status_message": "Response from one supplier",
+        "version": "1.0.2-20260704190444"
+      }
+    },
+    "simSwapNotApplicable": {
+      "summary": "SIM-swap served (-1 = the operator holds nothing for this identifier)",
+      "description": "The number is well formed and the operator answered `422 SERVICE_NOT_APPLICABLE` - a landline, an M2M or data-only SIM, an MVNO that has not enabled the API. An answer, so the command is served and billed; a call that got no answer would leave the whole `simswap` block absent instead.",
+      "value": {
+        "number": "+5519992858171",
+        "simswap": {
+          "risk_indicator": -1
+        },
+        "status": 0,
+        "status_message": "Response from one supplier",
+        "version": "1.0.2-20260704190444"
+      }
+    },
+    "kycMatchServed": {
+      "summary": "KYC match served (0 = no match, -1 = operator holds no data)",
+      "value": {
+        "number": "+393273339145",
+        "kyc_results": {
+          "first_name_score": 0,
+          "last_name_score": 0,
+          "name_score": 0,
+          "dob_score": 0,
+          "country_score": -1
+        },
+        "status": 0,
+        "status_message": "Response from one supplier",
+        "version": "1.0.2-20260704190444"
+      }
+    }
+  },
+  "errors": {
+    "badRequest": {
+      "summary": "400 problem document",
+      "value": {
+        "type": "about:blank",
+        "title": "Bad Request",
+        "status": 400,
+        "detail": "Plumma kyc_challenges must have either address or inline_address populated",
+        "instance": "/services/api",
+        "path": "/services/api",
+        "correlation_id": "8b3489e2-dab3-4b1f-a448-2ab46071fac8"
+      }
+    }
+  }
+}

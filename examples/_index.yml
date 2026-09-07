@@ -1,0 +1,26 @@
+generated: '2026-09-07'
+method: derived
+source: openapi/plumma-connect-openapi.yml
+note: >-
+  Extracted verbatim from the provider's own OpenAPI. Nothing here was authored or
+  synthesised — every request, response and error body below is the exact value Plumma
+  publishes in the specification, lifted out so it can be read without parsing the spec.
+  The API has one operation, and the provider documents it with four worked requests and
+  four worked responses, which is unusually complete for a single-operation contract.
+examples:
+- file: plumma-connect-api-examples.json
+  operationId: connectApi
+  requests: [simSwap, kycMatchStructured, kycMatchInline, wideCall]
+  responses: [simSwapServed, simSwapNoSwapFound, simSwapNotApplicable, kycMatchServed]
+  errors: [badRequest]
+  coverage: 1 of 1 operations carry both a request and a response example
+highlights:
+- >-
+  The three sim_swap response examples are the most instructive thing in the contract: they
+  distinguish risk_indicator 0 ("the operator watched and found no swap in the bounded
+  window") from -1 ("the operator holds nothing for this identifier at all — an upstream
+  422 SERVICE_NOT_APPLICABLE, still a served and billed answer") from an absent block
+  ("the command was never routed"). Three states an agent would otherwise conflate.
+- >-
+  kycMatchStructured and kycMatchInline show the two mutually exclusive address forms; the
+  400 example is the error you get for supplying neither.

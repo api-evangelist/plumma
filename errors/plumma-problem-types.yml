@@ -1,0 +1,99 @@
+generated: '2026-09-07'
+method: searched
+source: >-
+  Derived from openapi/plumma-connect-openapi.yml (4xx/5xx responses on POST /api) and
+  enriched from https://connect.plumma.it/plumma-connect-docs/ —
+  `resource-status-and-errors-doc` ("Status and Common Errors") and the Authentication guide
+format: rfc7807
+media_type: application/problem+json
+envelope:
+  fields:
+  - {name: type, type: string, note: 'about:blank in the published example — problem types are not individually addressable URIs'}
+  - {name: title, type: string}
+  - {name: status, type: integer}
+  - {name: detail, type: string, note: the human-readable sentence that distinguishes the cases}
+  - {name: instance, type: string}
+  - {name: path, type: string, note: Plumma extension}
+  - {name: correlation_id, type: string, note: 'Plumma extension — mirrors the X-Correlation-ID response header, so an error is traceable from the body alone'}
+  headers:
+  - {name: X-Correlation-ID, note: returned on every response, success or error}
+layering: >-
+  Two distinct layers, and confusing them is the most likely integration mistake on this
+  API. HTTP-level errors are raised by the security filter BEFORE the request reaches the
+  API logic and never produce a PlmResponse body. Everything that authenticates returns
+  HTTP 200 with an application-level `status` inside the body — see
+  errors/plumma-status-codes.yml.
+problems:
+- status: 400
+  title: Bad Request
+  summary: Malformed or invalid request payload — `detail` names the offending field.
+  example_detail: Plumma kyc_challenges must have either address or inline_address populated
+  remediation: Fix the named field. Not retryable unchanged.
+  source_operation: openapi/plumma-connect-openapi.yml#connectApi
+- status: 401
+  title: Unauthorized
+  summary: >-
+    The certificate itself could not be used — not a readable X.509 certificate, expired,
+    or not yet valid. Also returned when a sandbox call asks about a number that is not a
+    demo number.
+  remediation: >-
+    Mint a new key. A new key is what fixes it; retrying the same one will not. Regenerate
+    from the API keys menu in the console.
+  source_operation: openapi/plumma-connect-openapi.yml#connectApi
+- status: 402
+  title: Payment Required
+  summary: >-
+    Two different causes share this code. (1) The daily usage threshold for a DEMO key has
+    been exceeded — the body carries {"code": "rate.limit.exceeded"} and a message naming
+    the daily limit; production keys are not subject to it. (2) The prepaid wallet balance
+    has reached zero, which restricts access to the Network APIs until a top-up.
+  remediation: Wait for the next day (demo throttle) or top up the wallet (zero balance).
+  note: >-
+    NOT DECLARED IN THE OPENAPI. The contract lists 200/400/401/403/500 on POST /api; 402
+    appears only in the docs. An agent generated from the spec alone will not know this
+    code exists.
+  source: resource-status-and-errors-doc
+- status: 403
+  title: Forbidden
+  summary: >-
+    The certificate is fine and the call is still not allowed — the header was not sent at
+    all, or the certificate was issued for another purpose, or the application named by
+    x-plumma-connect-app-id is not one this key is admitted to. The docs add: the key has
+    been explicitly revoked or temporarily paused for the CONNECT service.
+  remediation: >-
+    A new key changes nothing here. Contact the account manager to have the key admitted
+    to the application, or to check whether it has been paused or revoked.
+  source_operation: openapi/plumma-connect-openapi.yml#connectApi
+- status: 429
+  title: Too Many Requests
+  summary: Production rate limit exceeded.
+  remediation: Back off. The agreed threshold is set in the Technical Addendum and can be raised on request.
+  note: >-
+    Published only in the SLA (Art. 4.1) as something that "may" be returned. No body shape
+    is documented and the OpenAPI does not declare it. No Retry-After header is published.
+  source: compliance-usage-limitations
+- status: 500
+  title: Internal Server Error
+  summary: Unexpected server-side failure.
+  remediation: >-
+    Retry. Quote the X-Correlation-ID when reporting it — it identifies the call
+    server-side.
+  source_operation: openapi/plumma-connect-openapi.yml#connectApi
+undeclared_upstream_codes:
+- code: 422
+  name: SERVICE_NOT_APPLICABLE
+  note: >-
+    An operator-side code surfaced through the response body rather than the HTTP status.
+    The OpenAPI's simSwapNotApplicable example explains that when an upstream operator
+    answers 422 SERVICE_NOT_APPLICABLE — a landline, an M2M or data-only SIM, an MVNO that
+    has not enabled the API — Plumma returns HTTP 200 with risk_indicator: -1. It is an
+    answer, so the command is served and billed; a call that got no answer at all would
+    leave the whole block absent instead. This is a CAMARA Commonalities error code
+    reaching the caller as a value, not a status.
+gaps:
+- >-
+  The registry is not addressable: `type` is `about:blank`, so problems cannot be matched
+  on a stable URI and must be matched on integer status plus a prose `detail`.
+- >-
+  402 and 429 are documented in prose but absent from the OpenAPI, so a client generated
+  from the contract will not handle either.

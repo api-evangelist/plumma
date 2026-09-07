@@ -1,0 +1,890 @@
+# Harvested verbatim from https://connect.plumma.it/docs/openapi/connect-api.json
+# and serialized to YAML. Content is unmodified; see openapi/_original/ for the
+# byte-for-byte JSON as fetched. Single tag (CONNECT), so no per-tag split applies.
+openapi: 3.1.0
+info:
+  title: Plumma CONNECT API
+  description: |
+    **Plumma CONNECT** is a phone-intelligence aggregation service. A single call
+    takes a phone number in E.164 form plus a list of **commands** (SIM-swap
+    check, KYC match, current carrier, porting timestamp, …), routes each command
+    to the best available supplier for the number's country, and returns one
+    aggregated response.
+
+    ## Authentication
+    Every call must carry the `x-plumma-connect-api-key` header. Its value is your
+    **X.509 client certificate, base64-encoded**.
+
+    Two different refusals, and they call for two different actions:
+
+    - **`401`** — the certificate itself could not be used: unreadable, expired,
+      or not yet valid. A new key is what fixes it.
+    - **`403`** — the certificate is fine and the call is not allowed: the header
+      was not sent at all, or the certificate was issued for another purpose, or
+      the application it names is not one this key is admitted to. A new key
+      changes nothing here.
+
+    Both answer `application/problem+json`, and the `detail` field says which of
+    the cases it is in a sentence meant to be read.
+
+    ## Live or sandbox: `x-plumma-connect-app-id` decides
+    The second header is what tells the two apart, and it is not optional in
+    practice — a live call without it does not fail, it silently becomes a
+    sandbox call.
+
+    - **Sent** — the call runs **live**: real suppliers, real data, billed per
+      served command. The pair (your certificate, that application) must be
+      **admitted**; if it is not, the call is refused with `403` and nothing is
+      billed. Admission is granted by Plumma per application, and an application
+      you have just created is not admitted until it is.
+    - **Not sent** — the call runs in the **sandbox**: canned identities, nothing
+      billed, and it may only ask about a **demo number**. Any other number is
+      refused with `401`.
+
+    The application id is the one shown for that application in the Plumma
+    console. There is no way to ask for the live engine any other way: the
+    request cannot name its own role.
+
+    ## Billing (per served command)
+    You are charged **per command a supplier actually served**, never per API
+    call. A command whose country is not covered, whose supplier call failed, or
+    that was rejected before routing is **not** billed. A supplier answer that
+    means "I hold no data for this" (e.g. a KYC score of `-1`) is a served result
+    and **is** billed.
+
+    ## Correlation id
+    Never send `X-Correlation-ID` — the server generates it and returns it on the
+    response header of every call (success or error). Quote it in support
+    requests: it identifies your call server-side.
+
+    ## Model version
+    `info.version` matches the model set (PlmRequest / PlmResponse) this contract
+    describes. The **same** string is returned in the `version` field of every
+    `PlmResponse`, so you can confirm the service matches this document at runtime:
+    make any call and compare `response.version` with `info.version` here.
+
+    A standalone JSON Schema for request validation ships alongside this file at
+    `plmrequest.schema.json` — point your validator at it to check a payload
+    before sending.
+  contact:
+    name: PLUMMA SRL
+    email: info@plumma.it
+  license:
+    name: Proprietary — © PLUMMA SRL, all rights reserved.
+  version: 1.0.2-20260903172027
+  x-model-version: 1.0.2-20260903172027
+servers:
+- url: https://connect.plumma.it/services
+  description: Production
+tags:
+- name: CONNECT
+  description: The flagship aggregation endpoint.
+paths:
+  /api:
+    post:
+      tags:
+      - CONNECT
+      summary: Run one or more intelligence commands against a phone number
+      operationId: connectApi
+      description: |
+        Submit a phone number and a non-empty list of commands. The response is a
+        single `PlmResponse` in which only the blocks relevant to the served
+        commands are populated (unpopulated fields are omitted, not null).
+
+        **Validation happens before routing.** A malformed payload returns `400`
+        with the offending field named in `detail`; no supplier is contacted and
+        nothing is billed.
+      security:
+      - ApiKeyAuth: []
+      parameters:
+      - $ref: '#/components/parameters/ApplicationId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlmRequest'
+            examples:
+              simSwap:
+                summary: SIM-swap check (single command)
+                value:
+                  number: '+393273339145'
+                  commands:
+                  - sim_swap
+              kycMatchStructured:
+                summary: KYC match with a structured address
+                value:
+                  number: '+393273339145'
+                  commands:
+                  - kyc_match
+                  kyc_challenges:
+                    name:
+                      first_name: Luigi
+                      last_name: Armani
+                    dob:
+                      day: 28
+                      month: 2
+                      year: 1999
+                    address:
+                      street: Via Corsini
+                      street_no: '21'
+                      city: Fanano
+                      province: MO
+                      postcode: '41021'
+                      country: IT
+              kycMatchInline:
+                summary: KYC match with a free-text (inline) address
+                value:
+                  number: '+447808226974'
+                  commands:
+                  - kyc_match
+                  kyc_challenges:
+                    name:
+                      first_name: John
+                      last_name: Smith
+                    inline_address:
+                      address: 23 Omnia Street, London, EC1A 1BB, GB
+                      normalize: true
+              wideCall:
+                summary: Several commands at once
+                value:
+                  number: '+447808226974'
+                  commands:
+                  - current_carrier
+                  - line_classification
+                  - sim_swap
+      responses:
+        '200':
+          description: |
+            Routing completed. Inspect `status` / `status_message` for the outcome
+            and the populated blocks for the data. HTTP 200 does not by itself mean
+            every command was served — read `status`.
+          headers:
+            X-Correlation-ID:
+              $ref: '#/components/headers/CorrelationId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlmResponse'
+              examples:
+                simSwapServed:
+                  summary: SIM-swap served (the operator sent the date of the last swap)
+                  value:
+                    number: '+393273339145'
+                    simswap:
+                      last_day: 0
+                      risk_indicator: 4
+                      simswap_min_threshold: 720
+                      date: '2018-10-17T23:00:00.000Z'
+                      swapped: false
+                      swapped_max_age: 240
+                    status: 0
+                    status_message: Response from one supplier
+                    version: 1.0.2-20260704190444
+                simSwapNoSwapFound:
+                  summary: SIM-swap served (0 = the operator watched and found no swap)
+                  description: The operator holds no swap for this number, and sent no date to place one
+                    with. `swapped` / `swapped_max_age` carry the bounded claim - nothing in the last
+                    240 hours - while the absent thresholds say there is no swap to bound. Not to be confused
+                    with `-1`, which is the operator having nothing to answer with at all.
+                  value:
+                    number: '+5581986179310'
+                    simswap:
+                      last_day: 0
+                      risk_indicator: 0
+                      swapped: false
+                      swapped_max_age: 240
+                    status: 0
+                    status_message: Response from one supplier
+                    version: 1.0.2-20260704190444
+                simSwapNotApplicable:
+                  summary: SIM-swap served (-1 = the operator holds nothing for this identifier)
+                  description: The number is well formed and the operator answered `422 SERVICE_NOT_APPLICABLE`
+                    - a landline, an M2M or data-only SIM, an MVNO that has not enabled the API. An answer,
+                    so the command is served and billed; a call that got no answer would leave the whole
+                    `simswap` block absent instead.
+                  value:
+                    number: '+5519992858171'
+                    simswap:
+                      risk_indicator: -1
+                    status: 0
+                    status_message: Response from one supplier
+                    version: 1.0.2-20260704190444
+                kycMatchServed:
+                  summary: KYC match served (0 = no match, -1 = operator holds no data)
+                  value:
+                    number: '+393273339145'
+                    kyc_results:
+                      first_name_score: 0
+                      last_name_score: 0
+                      name_score: 0
+                      dob_score: 0
+                      country_score: -1
+                    status: 0
+                    status_message: Response from one supplier
+                    version: 1.0.2-20260704190444
+        '400':
+          description: Malformed or invalid request payload — `detail` names the offending field.
+          headers:
+            X-Correlation-ID:
+              $ref: '#/components/headers/CorrelationId'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+              example:
+                type: about:blank
+                title: Bad Request
+                status: 400
+                detail: Plumma kyc_challenges must have either address or inline_address populated
+                instance: /services/api
+                path: /services/api
+                correlation_id: 8b3489e2-dab3-4b1f-a448-2ab46071fac8
+        '401':
+          description: |
+            The certificate could not be used: not a readable X.509 certificate,
+            or expired, or not yet valid. `detail` says which. Mint a new key.
+          headers:
+            X-Correlation-ID:
+              $ref: '#/components/headers/CorrelationId'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '403':
+          description: |
+            The certificate is usable and the call is still not allowed: the
+            `x-plumma-connect-api-key` header was absent, or the certificate was
+            issued for a purpose Connect does not accept, or it is not admitted to
+            the application named in `x-plumma-connect-app-id`. `detail` says
+            which. A new key does not help — the admission has to change.
+          headers:
+            X-Correlation-ID:
+              $ref: '#/components/headers/CorrelationId'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '500':
+          description: |
+            Unexpected server error. `detail` is generic by design — use the
+            `correlation_id` to locate the failure in the logs.
+          headers:
+            X-Correlation-ID:
+              $ref: '#/components/headers/CorrelationId'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: x-plumma-connect-api-key
+      description: Your X.509 client certificate, base64-encoded.
+  parameters:
+    ApplicationId:
+      name: x-plumma-connect-app-id
+      in: header
+      required: false
+      description: |
+        The application this call belongs to, as shown in the Plumma console.
+
+        **Present** — the call runs against the live suppliers as that
+        application, and the pair (certificate, application) has to be admitted:
+        it is refused with `403` otherwise, and a value that is not a number is
+        refused the same way.
+
+        **Absent** — the call runs in the sandbox and may only ask about a demo
+        number. Nothing is billed, and no admission is needed.
+
+        Omitting it is therefore not a smaller version of a live call: it is a
+        different call, answered from canned data.
+      schema:
+        type: string
+        pattern: ^[0-9]+$
+      example: '11'
+  headers:
+    CorrelationId:
+      description: Server-generated request id, echoed on every response. Never sent by the client.
+      schema:
+        type: string
+        format: uuid
+        example: 8b3489e2-dab3-4b1f-a448-2ab46071fac8
+  schemas:
+    ProblemDetail:
+      type: object
+      description: RFC 7807 problem document returned on every 4xx/5xx.
+      properties:
+        type:
+          type: string
+          format: uri
+          example: about:blank
+        title:
+          type: string
+          example: Bad Request
+        status:
+          type: integer
+          format: int32
+          example: 400
+        detail:
+          type: string
+          example: Plumma commands list cannot be null or empty
+        instance:
+          type: string
+          example: /services/api
+        path:
+          type: string
+          example: /services/api
+        correlation_id:
+          type: string
+          format: uuid
+          example: 8b3489e2-dab3-4b1f-a448-2ab46071fac8
+    Address:
+      type: object
+      properties:
+        street:
+          type: string
+          minLength: 1
+          maxLength: 100
+          examples:
+          - Via Corsini
+        street_no:
+          type: string
+          maxLength: 10
+          pattern: '[A-Za-z0-9\-/]+'
+          examples:
+          - '21'
+        city:
+          type: string
+          minLength: 1
+          maxLength: 50
+          examples:
+          - Fanano
+          $comment: Server enforces [\p{L}'\-\s]+ ; omitted here for cross-engine portability.
+        province:
+          type: string
+          maxLength: 50
+          examples:
+          - MO
+        postcode:
+          type: string
+          pattern: '[0-9A-Za-z]{4,10}'
+          examples:
+          - '41021'
+        national_id:
+          type: string
+          maxLength: 50
+          pattern: '[A-Za-z0-9\-]+'
+        country:
+          type: string
+          pattern: '[A-Za-z]{2,3}'
+          description: ISO country code (2-3 letters).
+          examples:
+          - IT
+        normalize:
+          type: boolean
+          default: false
+        house_number_extension:
+          type: string
+      additionalProperties: false
+      description: Structured postal address. Mutually exclusive with inline_address.
+      required:
+      - street
+      - street_no
+      - city
+      - postcode
+      - country
+    Dob:
+      type: object
+      properties:
+        day:
+          type: integer
+          minimum: 1
+          maximum: 31
+          examples:
+          - 28
+        month:
+          type: integer
+          minimum: 1
+          maximum: 12
+          examples:
+          - 2
+        year:
+          type: integer
+          minimum: 1900
+          maximum: 2100
+          examples:
+          - 1999
+      additionalProperties: false
+      description: Date of birth. Either fully specified (day+month+year) or entirely omitted — a partial
+        DOB is rejected.
+      dependencies:
+        day:
+        - month
+        - year
+        month:
+        - day
+        - year
+        year:
+        - day
+        - month
+    InlineAddress:
+      type: object
+      properties:
+        address:
+          type: string
+          minLength: 1
+          examples:
+          - 23 Omnia Street, London, EC1A 1BB, GB
+        normalize:
+          type: boolean
+          default: false
+      additionalProperties: false
+      description: Free-text address as a single string. Mutually exclusive with address.
+      required:
+      - address
+    KycChallenges:
+      type: object
+      properties:
+        dob:
+          $ref: '#/components/schemas/Dob'
+        name:
+          $ref: '#/components/schemas/Name'
+        address:
+          $ref: '#/components/schemas/Address'
+        email:
+          type: string
+          format: email
+          examples:
+          - john.smith@example.com
+        inline_address:
+          $ref: '#/components/schemas/InlineAddress'
+        return_address:
+          type: boolean
+          description: Ask the supplier to return the normalized address block.
+        gender:
+          type: string
+      additionalProperties: false
+      description: 'Data to match for `kyc_match`. Must carry EXACTLY ONE address form: `address` (structured)
+        or `inline_address` (free text) — never both, never neither.'
+      oneOf:
+      - $comment: structured address present, inline absent
+        required:
+        - address
+        not:
+          required:
+          - inline_address
+      - $comment: inline address present, structured absent
+        required:
+        - inline_address
+        not:
+          required:
+          - address
+    Name:
+      type: object
+      properties:
+        first_name:
+          type: string
+          minLength: 2
+          maxLength: 100
+          $comment: Server also requires ^[\p{L}][\p{L}'\-\s]*$; \p{L} is not portable across JSON Schema
+            regex engines, so only length is validated here and the exact character rule stays server-side.
+        last_name:
+          type: string
+          minLength: 2
+          maxLength: 100
+        middle_name:
+          type: string
+          minLength: 2
+          maxLength: 100
+        name_kana_hankaku:
+          type: string
+        name_kana_zenkaku:
+          type: string
+        family_name_at_birth:
+          type: string
+          minLength: 2
+          maxLength: 100
+      additionalProperties: false
+    allowedCommandValues:
+      type: string
+      enum:
+      - line_classification
+      - current_carrier
+      - issuing_carrier
+      - porting_timestamp
+      - porting_logs
+      - network_presence
+      - roaming_intel
+      - deactivation_point
+      - churn_tracker
+      - sim_swap
+      - port_fraud_shield
+      - digital_footprint
+      - age_verification
+      - kyc_match
+      - divert_detector
+      - commercial_segment
+      - tenure_period
+    PlmRequest:
+      type: object
+      properties:
+        number:
+          type: string
+          minLength: 1
+          pattern: ^\+?[1-9][0-9]{6,14}$
+          description: Phone number in international form. Accepted with or without a leading '+'; the
+            server normalises to E.164 and rejects numbers libphonenumber considers invalid (a regex cannot
+            fully replicate that check).
+          examples:
+          - '+393273339145'
+          - '447808226974'
+        commands:
+          type: array
+          items:
+            $ref: '#/components/schemas/allowedCommandValues'
+          minItems: 1
+          description: Non-empty list of commands to run. Duplicate/unknown values are rejected (400).
+        kyc_challenges:
+          $ref: '#/components/schemas/KycChallenges'
+        tenure_period:
+          type: integer
+          description: Tenure window in days. Required only when the `tenure_period` command is requested.
+          examples:
+          - 90
+      additionalProperties: false
+      required:
+      - number
+      - commands
+      allOf:
+      - $comment: When kyc_match is requested, kyc_challenges is required.
+        if:
+          properties:
+            commands:
+              contains:
+                const: kyc_match
+          required:
+          - commands
+        then:
+          required:
+          - kyc_challenges
+      - $comment: When the tenure_period command is requested, the tenure_period value is required.
+        if:
+          properties:
+            commands:
+              contains:
+                const: tenure_period
+          required:
+          - commands
+        then:
+          required:
+          - tenure_period
+    AgeVerification:
+      type: object
+      properties:
+        verified:
+          type: integer
+        threshold:
+          type: integer
+    ChurnTracker:
+      type: object
+      properties:
+        operator:
+          type: string
+        action:
+          type: string
+        ts:
+          type: string
+          format: date-time
+          description: When the deactivation/churn event happened, ISO-8601 UTC.
+          examples:
+          - '2025-11-02T08:30:00.000Z'
+        number:
+          type: integer
+        number2:
+          type: integer
+    CurrentCarrier:
+      type: object
+      properties:
+        lrn: {}
+        mcc:
+          type: string
+        mnc:
+          type: string
+        name:
+          type: string
+        spid:
+          type: string
+        ocn: {}
+    DigitalFootprint:
+      type: object
+      properties:
+        whatsapp:
+          type: integer
+        telegram:
+          type: integer
+        amazon:
+          type: integer
+        google:
+          type: integer
+        office365:
+          type: integer
+        instagram:
+          type: integer
+        linkedin:
+          type: integer
+        twitter:
+          type: integer
+        skype:
+          type: integer
+        flipkart:
+          type: integer
+        viber:
+          type: integer
+        bukalapak:
+          type: integer
+        facebook:
+          type: integer
+        error:
+          type: integer
+        error_description:
+          type: string
+    DivertDetector:
+      type: object
+      properties:
+        unconditional_call_forward:
+          type: integer
+    IssuingCarrier:
+      type: object
+      properties:
+        mcc:
+          type: string
+        mnc:
+          type: string
+        name:
+          type: string
+        spid:
+          type: string
+        ocn: {}
+    KycResults:
+      type: object
+      properties:
+        first_name_score:
+          type: integer
+        last_name_score:
+          type: integer
+        middle_name_score:
+          type: integer
+        name_score:
+          type: integer
+        address_score:
+          type: integer
+        street_no_score:
+          type: integer
+        street_score:
+          type: integer
+        city_score:
+          type: integer
+        postcode_score:
+          type: integer
+        dob_score:
+          type: integer
+        province_score:
+          type: integer
+        country_score:
+          type: integer
+        national_id_score:
+          type: integer
+        email_score:
+          type: integer
+    NormalizedAddress:
+      type: object
+      properties:
+        street_no:
+          type: string
+        street:
+          type: string
+        city:
+          type: string
+        province:
+          type: string
+        postcode:
+          type: string
+        country:
+          type: string
+    PortingLogs:
+      type: object
+      properties:
+        plmnetwork:
+          type: integer
+        i_type:
+          type: string
+        action:
+          type: string
+        ts:
+          type: string
+          format: date-time
+          description: When the porting event happened, ISO-8601 UTC.
+          examples:
+          - '2016-03-11T09:15:00.000Z'
+    QdrHistory:
+      type: object
+      properties:
+        service:
+          type: string
+        source:
+          type: string
+        ts:
+          type: string
+          format: date-time
+          description: When the query-detail record was observed, ISO-8601 UTC.
+          examples:
+          - '2026-08-01T07:00:00.000Z'
+        plmnetwork:
+          type: string
+    RoamingNetwork:
+      type: object
+      properties:
+        lrn: {}
+        mcc:
+          type: string
+        mnc:
+          type: string
+        name:
+          type: string
+        spid:
+          type: string
+        ocn: {}
+    Simswap:
+      type: object
+      properties:
+        last_day:
+          type: integer
+          description: '1 when the last SIM change falls within the last 24 hours, 0 otherwise. Absent
+            when neither can be stated: when the operator answered only that a swap happened somewhere
+            inside a window wider than 24 h, and when it refused or held nothing.'
+        risk_indicator:
+          type: integer
+          description: '0 = the operator watched and found no SIM swap, the lowest risk there is. 1 =
+            swap in the last 24 h, 2 = last 72 h, 3 = last 30 days, 4 = older than 30 days, which is stated
+            only when the operator''s own monitored period is at least that long. Two negatives are answers,
+            not failures: -1 = the operator answered that it holds nothing servable for this number, -2
+            = the operator answered refusing on this number. A command whose call got no answer leaves
+            the whole block absent instead - which is the difference between an operator with nothing
+            to say and a supplier that never replied.'
+          examples:
+          - 0
+        simswap_min_threshold:
+          type: integer
+          description: Lower bound, in hours, of the window the last SIM change falls into. Absent when
+            there is no lower bound (the change is more recent than 24 h) and when there is no swap to
+            bound at all (`risk_indicator` 0).
+        simswap_max_threshold:
+          type: integer
+          description: Upper bound, in hours, of the window the last SIM change falls into. Absent when
+            there is no upper bound (the change is older than the monitored period) and when there is
+            no swap to bound at all (`risk_indicator` 0). When the operator answered with the boolean
+            alone, this is the window that boolean referred to.
+        date:
+          type: string
+          format: date-time
+          description: When the last SIM change happened, ISO-8601 UTC. Absent when the supplier answered
+            but holds no date.
+          examples:
+          - '2018-10-17T23:00:00.000Z'
+        swapped:
+          type: boolean
+          description: Whether a SIM swap happened within the last `swapped_max_age` hours. Meaningless
+            without that window, which is why the two always travel together. Absent when neither the
+            date nor the supplier's own answer allowed it to be determined.
+          examples:
+          - false
+        swapped_max_age:
+          type: integer
+          description: The window, in hours, that `swapped` refers to.
+          examples:
+          - 240
+      description: SIM-swap block. `date` and the `risk_indicator` / threshold trio are the supplier's
+        own view of the last SIM change; `swapped` / `swapped_max_age` are the CAMARA pair and answer
+        one fixed question, so two suppliers can be compared.
+    PlmResponse:
+      type: object
+      properties:
+        number:
+          type: string
+        kyc_results:
+          $ref: '#/components/schemas/KycResults'
+        normalize_address:
+          type: string
+        current_carrier:
+          $ref: '#/components/schemas/CurrentCarrier'
+        ported:
+          type: boolean
+        issuing_carrier:
+          $ref: '#/components/schemas/IssuingCarrier'
+        ported_date:
+          type: string
+          format: date-time
+          description: When the number was ported to its current carrier, ISO-8601 UTC. Suppliers that
+            only hold the calendar day are rendered at midnight UTC; `ported_date_type` declares how precise
+            the underlying date is.
+          examples:
+          - '2016-03-11T00:00:00.000Z'
+        ported_date_type:
+          type: string
+          description: How precise `ported_date` is, as declared by the supplier that answered.
+          examples:
+          - FULL
+        present:
+          type: string
+        type:
+          type: string
+        etype:
+          type: string
+        porting_logs:
+          type: array
+          items:
+            $ref: '#/components/schemas/PortingLogs'
+          description: Porting events known for the number. Absent when the command was not requested
+            or no supplier held any row — never an empty array.
+        is_roaming:
+          type: string
+        roaming_network:
+          $ref: '#/components/schemas/RoamingNetwork'
+        portfraud:
+          type: string
+        qdr_history:
+          type: array
+          items:
+            $ref: '#/components/schemas/QdrHistory'
+        status:
+          type: integer
+        status_message:
+          type: string
+        simswap:
+          $ref: '#/components/schemas/Simswap'
+        plm_score:
+          type: integer
+        age_verification:
+          $ref: '#/components/schemas/AgeVerification'
+        digital_footprint:
+          $ref: '#/components/schemas/DigitalFootprint'
+        divert_detector:
+          $ref: '#/components/schemas/DivertDetector'
+        churn_tracker:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChurnTracker'
+          description: Deactivation/churn events known for the number, most useful as a recency signal.
+            Absent when the command was not requested or no supplier held any row — never an empty array.
+        normalized_address:
+          $ref: '#/components/schemas/NormalizedAddress'
+        market_segment:
+          type: string
+        version:
+          type: string
+          readOnly: true
+          description: The model-set version that produced this response. Compare it with `info.version`
+            of this document to confirm the service matches the contract you are reading.

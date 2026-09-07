@@ -1,0 +1,74 @@
+generated: '2026-09-07'
+method: derived
+status: candidate
+source: >-
+  Derived from openapi/plumma-connect-openapi.yml. Searched first and found nothing:
+  no MCP server is mentioned anywhere in https://connect.plumma.it/plumma-connect-docs/,
+  no `plumma`/`ploomma` package exists on npm or PyPI, no GitHub organization exists under
+  either name, and the Technical Guide's own "SDKs and code examples" section reads "This
+  section is under construction."
+deployment:
+  mode: none
+  endpoint: null
+  install: null
+  package: null
+  auth: api-key
+  verified: derived
+note: >-
+  NOBODY SHIPS A SERVER. This is a candidate tool list API Evangelist derived from the
+  provider's contract so the surface is legible to an agent; it is not something Plumma
+  publishes and no endpoint below can be called by an MCP client today. The apis.yml
+  pointer is `X-MCPServerCandidate`, never `MCPServer`.
+shape_note: >-
+  The mapping is unusual and worth stating. This API has ONE OpenAPI operation, so a naive
+  one-tool-per-operationId derivation would produce a single tool called `connectApi` that
+  takes a free-form command array — useless to an agent, which would have to know the
+  vocabulary before it could pick. The command enum is the real capability surface, so the
+  candidate tools below are derived one-per-COMMAND: each is the same POST /api call with
+  `commands` pinned to a single value. Every tool therefore inherits its input contract
+  from PlmRequest and its output from the corresponding PlmResponse block — see
+  data-model/plumma-data-model.yml for the command-to-field binding.
+server:
+  name: plumma-connect
+  transport: http
+  url: null
+  backing_operation: openapi/plumma-connect-openapi.yml#connectApi
+  common_input:
+    number: {type: string, required: true, description: 'E.164 MSISDN, with or without the leading +'}
+  common_headers:
+    x-plumma-connect-api-key: 'base64-encoded X.509 client certificate (docs also name this header x-ploommacore-api-key)'
+    x-plumma-connect-app-id: 'omit for sandbox, send to run live — omitting it silently downgrades a live call'
+  agent_warnings:
+  - 'HTTP 200 does not mean success — read the in-body `status` (0/1/2/4/5) and the per-command breakdown in `status_message`.'
+  - 'Every served command draws down a prepaid Euro wallet. There is no idempotency key, so a retry is a second charge.'
+  - 'A missing response block means the command was not routed, which is different from a sentinel value of -1 meaning the operator holds no data.'
+tools:
+- {name: sim_swap, description: 'Detect recent SIM card changes on a phone number as an account-takeover fraud signal.', source_operation: 'openapi/plumma-connect-openapi.yml#connectApi', command: sim_swap, returns: PlmResponse.simswap}
+- {name: kyc_match, description: 'Score caller-supplied identity attributes (name, date of birth, address, national id, email) against operator-held records without exchanging PII.', source_operation: 'openapi/plumma-connect-openapi.yml#connectApi', command: kyc_match, extra_input: kyc_challenges, returns: PlmResponse.kyc_results}
+- {name: age_verification, description: 'Verify whether the subscriber is above or below an age threshold using operator data, without documents.', source_operation: 'openapi/plumma-connect-openapi.yml#connectApi', command: age_verification, returns: PlmResponse.age_verification}
+- {name: current_carrier, description: 'Identify the mobile operator currently serving the number (MCC, MNC, name, SPID, LRN, OCN).', source_operation: 'openapi/plumma-connect-openapi.yml#connectApi', command: current_carrier, returns: PlmResponse.current_carrier}
+- {name: issuing_carrier, description: 'Identify the operator that originally issued the number.', source_operation: 'openapi/plumma-connect-openapi.yml#connectApi', command: issuing_carrier, returns: PlmResponse.issuing_carrier}
+- {name: line_classification, description: 'Classify the number as fixed or mobile.', source_operation: 'openapi/plumma-connect-openapi.yml#connectApi', command: line_classification, returns: PlmResponse.type}
+- {name: network_presence, description: 'Check whether the number is currently registered on a network.', source_operation: 'openapi/plumma-connect-openapi.yml#connectApi', command: network_presence, returns: PlmResponse.present}
+- {name: roaming_intel, description: 'Determine international roaming status and the visited network.', source_operation: 'openapi/plumma-connect-openapi.yml#connectApi', command: roaming_intel, returns: 'PlmResponse.is_roaming, PlmResponse.roaming_network'}
+- {name: porting_timestamp, description: 'Return the most recent date the number was ported.', source_operation: 'openapi/plumma-connect-openapi.yml#connectApi', command: porting_timestamp, returns: 'PlmResponse.ported, ported_date, ported_date_type'}
+- {name: porting_logs, description: 'Return the full history of porting events for the number.', source_operation: 'openapi/plumma-connect-openapi.yml#connectApi', command: porting_logs, returns: PlmResponse.porting_logs}
+- {name: port_fraud_shield, description: 'Analyse recent porting activity for fraudulent patterns.', source_operation: 'openapi/plumma-connect-openapi.yml#connectApi', command: port_fraud_shield, returns: PlmResponse.portfraud}
+- {name: divert_detector, description: 'Check whether unconditional call forwarding is active on the number.', source_operation: 'openapi/plumma-connect-openapi.yml#connectApi', command: divert_detector, returns: PlmResponse.divert_detector}
+- {name: digital_footprint, description: "Check the number's presence across consumer platforms (WhatsApp, Telegram, Google, Instagram, LinkedIn and others).", source_operation: 'openapi/plumma-connect-openapi.yml#connectApi', command: digital_footprint, returns: PlmResponse.digital_footprint}
+- {name: commercial_segment, description: 'Return the billing type or contract category of the subscriber (PAYG, PAYM, Business).', source_operation: 'openapi/plumma-connect-openapi.yml#connectApi', command: commercial_segment, returns: PlmResponse.market_segment}
+- {name: tenure_period, description: 'Score how long the subscriber has held the number against a supplied period.', source_operation: 'openapi/plumma-connect-openapi.yml#connectApi', command: tenure_period, extra_input: tenure_period, returns: PlmResponse.plm_score}
+- {name: deactivation_point, description: 'Return the last recorded deactivation event for the number (USA).', source_operation: 'openapi/plumma-connect-openapi.yml#connectApi', command: deactivation_point, returns: PlmResponse.churn_tracker}
+- {name: churn_tracker, description: 'Return up to the ten most recent deactivation events for the number (USA).', source_operation: 'openapi/plumma-connect-openapi.yml#connectApi', command: churn_tracker, returns: PlmResponse.churn_tracker}
+excluded:
+- {tool: number_verification, reason: 'documented and carries a cmd_enc ordinal, but not present in the OpenAPI allowedCommandValues enum — a client generated from the contract cannot send it'}
+- {tool: scam_check, reason: 'marked "in development" on the product page and absent from the request enum'}
+- {tool: qdr_history, reason: 'carries a cmd_enc ordinal and a response schema but is absent from the request enum'}
+- {tool: enhanced_type, reason: 'documented in the Commands table but absent from the request enum'}
+- {tool: device_swap, reason: 'has a reference document but is absent from the request enum'}
+- {tool: device_location, reason: 'has a reference document but is absent from the request enum'}
+- {tool: address_cleanse, reason: 'not a command — triggered by the `normalize` flag on Address/InlineAddress'}
+coverage:
+  commands_in_enum: 17
+  tools_derived: 17
+  commands_documented_but_unusable: 6

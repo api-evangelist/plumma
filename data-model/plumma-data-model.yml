@@ -1,0 +1,107 @@
+generated: '2026-09-07'
+method: derived
+source: >-
+  openapi/plumma-connect-openapi.yml ($ref graph across components.schemas) and
+  json-schema/plumma-plmrequest.schema.json; command semantics cross-checked against
+  https://connect.plumma.it/plumma-connect-docs/ (`guide-technical_guide-doc`)
+shape: request-response, not a resource graph
+summary: >-
+  There is no persistent entity model to draw. Plumma Connect creates nothing, stores
+  nothing and exposes no resource with an identifier a client can fetch again later — the
+  provider's own gateway principle is that nothing is persisted at rest. What the schema
+  graph describes is a REQUEST document, a RESPONSE document, and a set of per-command
+  result blocks that are attached to the response only when that command was served. The
+  root key of the whole model is the MSISDN, and it is a natural key held by the mobile
+  network, not by Plumma.
+root_identifier:
+  field: number
+  type: ITU-T E.164 MSISDN
+  pattern: ^\+?[1-9][0-9]{6,14}$
+  note: >-
+    Echoed back on the response. It is the only join key in the model; every result block
+    is a projection of operator data about this one identifier.
+entities:
+- name: PlmRequest
+  role: request document
+  required: [number, commands]
+  fields:
+  - {field: number, type: string, note: E.164 MSISDN}
+  - {field: commands, type: array, items: allowedCommandValues, note: '17-value enum; each command must be unique in the array'}
+  - {field: kyc_challenges, type: KycChallenges, note: 'only meaningful when kyc_match is requested'}
+  - {field: tenure_period, type: integer, note: 'parameter for the tenure_period command'}
+- name: KycChallenges
+  role: caller-supplied identity attributes to be scored
+  fields: [dob, name, address, inline_address, email, gender, return_address]
+  note: >-
+    Address and inline_address are mutually exclusive alternatives — supplying neither is a
+    400 whose detail reads "Plumma kyc_challenges must have either address or
+    inline_address populated". Values are scored, never returned.
+- name: Name
+  fields: [first_name, last_name, middle_name, name_kana_hankaku, name_kana_zenkaku, family_name_at_birth]
+- name: Dob
+  fields: [day, month, year]
+- name: Address
+  required: [street, street_no, city, postcode, country]
+  fields: [street, street_no, city, province, postcode, national_id, country, normalize, house_number_extension]
+- name: InlineAddress
+  required: [address]
+  fields: [address, normalize]
+- name: PlmResponse
+  role: response document
+  fields_always: [number, status, status_message, version]
+  note: >-
+    Every other field is a per-command result block, present only if that command was
+    routed AND the supplier answered. Absence is meaningful and is not an error field —
+    see errors/plumma-status-codes.yml.
+- name: ProblemDetail
+  role: RFC 7807 error document (4xx/5xx only, never inside a 200)
+  fields: [type, title, status, detail, instance, path, correlation_id]
+command_result_blocks:
+  note: >-
+    The real "relationship" in this model is command -> response field. This is the binding
+    an integrator actually needs and it is not stated anywhere in one place in the
+    provider's own material, so it is derived here from the schema and the Commands table.
+  bindings:
+  - {command: line_classification, response_fields: [type], values: 'Fixed or Mobile'}
+  - {command: enhanced_type, response_fields: [etype], values: 'integer 1-33', note: 'documented as a command in the Commands reference but absent from the OpenAPI allowedCommandValues enum'}
+  - {command: current_carrier, response_fields: [current_carrier], schema: CurrentCarrier, fields: [lrn, mcc, mnc, name, spid, ocn]}
+  - {command: issuing_carrier, response_fields: [issuing_carrier], schema: IssuingCarrier, fields: [mcc, mnc, name, spid, ocn]}
+  - {command: porting_timestamp, response_fields: [ported, ported_date, ported_date_type]}
+  - {command: porting_logs, response_fields: [porting_logs], schema: 'array of PortingLogs', fields: [plmnetwork, i_type, action, ts]}
+  - {command: network_presence, response_fields: [present], values: 'yes, no or n/a'}
+  - {command: roaming_intel, response_fields: [is_roaming, roaming_network], schema: RoamingNetwork}
+  - {command: deactivation_point, response_fields: [churn_tracker], note: 'USA; the most recent deactivation event'}
+  - {command: churn_tracker, response_fields: [churn_tracker], schema: 'array of ChurnTracker', fields: [operator, action, ts, number, number2], note: 'USA; up to the 10 most recent deactivation events'}
+  - {command: sim_swap, response_fields: [simswap], schema: Simswap, fields: [last_day, risk_indicator, simswap_min_threshold, simswap_max_threshold, date, swapped, swapped_max_age]}
+  - {command: port_fraud_shield, response_fields: [portfraud, present]}
+  - {command: digital_footprint, response_fields: [digital_footprint], schema: DigitalFootprint, fields: [whatsapp, telegram, amazon, google, office365, instagram, linkedin, twitter, skype, flipkart, viber, bukalapak, facebook, error, error_description]}
+  - {command: age_verification, response_fields: [age_verification], schema: AgeVerification, fields: [verified, threshold]}
+  - {command: kyc_match, response_fields: [kyc_results], schema: KycResults, fields: [first_name_score, last_name_score, middle_name_score, name_score, address_score, street_no_score, street_score, city_score, postcode_score, dob_score, province_score, country_score, national_id_score, email_score], note: 'per-field match scores 0-100; -1 means the operator holds no data for that field'}
+  - {command: divert_detector, response_fields: [divert_detector], schema: DivertDetector, fields: [unconditional_call_forward]}
+  - {command: commercial_segment, response_fields: [market_segment], values: 'PAYG, PAYM, Business, n/a'}
+  - {command: tenure_period, response_fields: [plm_score], note: 'takes the tenure_period integer on the request'}
+  - {command: qdr_history, response_fields: [qdr_history], schema: 'array of QdrHistory', fields: [service, source, ts, plmnetwork], note: 'in the cmd_enc ordinal table and the Commands reference, but NOT in the OpenAPI request enum'}
+  - {command: address_cleanse, response_fields: [normalize_address, normalized_address], schema: NormalizedAddress, note: 'triggered by the normalize flag on Address/InlineAddress rather than by a command name'}
+relationships:
+- {from: PlmRequest, to: KycChallenges, kind: has_one, via: kyc_challenges}
+- {from: KycChallenges, to: Name, kind: has_one, via: name}
+- {from: KycChallenges, to: Dob, kind: has_one, via: dob}
+- {from: KycChallenges, to: Address, kind: has_one, via: address}
+- {from: KycChallenges, to: InlineAddress, kind: has_one, via: inline_address}
+- {from: PlmResponse, to: Simswap, kind: has_one, via: simswap}
+- {from: PlmResponse, to: KycResults, kind: has_one, via: kyc_results}
+- {from: PlmResponse, to: CurrentCarrier, kind: has_one, via: current_carrier}
+- {from: PlmResponse, to: IssuingCarrier, kind: has_one, via: issuing_carrier}
+- {from: PlmResponse, to: RoamingNetwork, kind: has_one, via: roaming_network}
+- {from: PlmResponse, to: AgeVerification, kind: has_one, via: age_verification}
+- {from: PlmResponse, to: DigitalFootprint, kind: has_one, via: digital_footprint}
+- {from: PlmResponse, to: DivertDetector, kind: has_one, via: divert_detector}
+- {from: PlmResponse, to: NormalizedAddress, kind: has_one, via: normalized_address}
+- {from: PlmResponse, to: PortingLogs, kind: has_many, via: porting_logs}
+- {from: PlmResponse, to: ChurnTracker, kind: has_many, via: churn_tracker}
+- {from: PlmResponse, to: QdrHistory, kind: has_many, via: qdr_history}
+id_prefixes: []
+id_prefixes_note: >-
+  No opaque object identifiers exist. The only identifiers in the model are the MSISDN, the
+  server-generated X-Correlation-ID (a UUID, per-call, not addressable afterwards), and the
+  numeric application id carried in x-plumma-connect-app-id.
