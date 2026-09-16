@@ -58,33 +58,16 @@ x-tier-reason: harvest
 apis:
 - aid: plumma:plumma-connect-api
   name: Plumma CONNECT API
-  description: A single-operation aggregation API over mobile network operator intelligence. One POST
-    /api call carries a phone number in E.164 form plus a `commands` array, and returns the requested
-    signals in one response. The published enum carries 17 commands — line_classification, current_carrier,
-    issuing_carrier, porting_timestamp, porting_logs, network_presence, roaming_intel, deactivation_point,
-    churn_tracker, sim_swap, port_fraud_shield, digital_footprint, age_verification, kyc_match, divert_detector,
-    commercial_segment and tenure_period. Authentication is a single API key header (x-plumma-connect-api-key,
-    documented as a base64-encoded X.509 client certificate). Errors are RFC 7807 problem documents on
-    every 4xx/5xx, carrying a correlation_id. The specification ships four worked request examples, including
-    a multi-command call.
+  description: The flagship aggregation endpoint.
   humanURL: https://connect.plumma.it/plumma-connect-docs/
   baseURL: https://connect.plumma.it/services
   tags:
-  - Network APIs
-  - SIM Swap
-  - KYC
-  - Age Verification
-  - Fraud Prevention
-  - GSMA Open Gateway
+  - CONNECT
   properties:
   - type: OpenAPI
-    url: openapi/plumma-connect-openapi.yml
-  - type: OpenAPI
-    url: https://connect.plumma.it/docs/openapi/connect-api.json
+    url: openapi/plumma-connect-api-openapi.yml
   - type: JSONSchema
     url: json-schema/plumma-plmrequest.schema.json
-  - type: Overlay
-    url: overlays/plumma-connect-api-overlay.yaml
   - type: Examples
     url: examples/plumma-connect-api-examples.json
   - type: Documentation
@@ -92,6 +75,8 @@ apis:
   - type: APIReference
     url: https://connect.plumma.it/plumma-connect-docs/
 common:
+- type: Overlay
+  url: overlays/plumma-connect-api-overlay.yaml
 - type: Conventions
   url: conventions/plumma-conventions.yml
 - type: Vocabulary
