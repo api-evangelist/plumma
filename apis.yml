@@ -62,6 +62,8 @@ apis:
   humanURL: https://connect.plumma.it/plumma-connect-docs/
   baseURL: https://connect.plumma.it/services
   tags:
+  - Connect
+  tags_raw:
   - CONNECT
   properties:
   - type: OpenAPI
