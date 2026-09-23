@@ -1,3 +1,5 @@
+# x-archived-from: plumma-connect-openapi.yml
+# x-archived-on: 2026-09-16
 # Harvested verbatim from https://connect.plumma.it/docs/openapi/connect-api.json
 # and serialized to YAML. Content is unmodified; see openapi/_original/ for the
 # byte-for-byte JSON as fetched. Single tag (CONNECT), so no per-tag split applies.
