@@ -224,158 +224,6 @@ paths:
                 $ref: '#/components/schemas/ProblemDetail'
 components:
   schemas:
-    KycChallenges:
-      type: object
-      properties:
-        dob:
-          $ref: '#/components/schemas/Dob'
-        name:
-          $ref: '#/components/schemas/Name'
-        address:
-          $ref: '#/components/schemas/Address'
-        email:
-          type: string
-          format: email
-          examples:
-          - john.smith@example.com
-        inline_address:
-          $ref: '#/components/schemas/InlineAddress'
-        return_address:
-          type: boolean
-          description: Ask the supplier to return the normalized address block.
-        gender:
-          type: string
-      additionalProperties: false
-      description: 'Data to match for `kyc_match`. Must carry EXACTLY ONE address form: `address` (structured) or `inline_address` (free text) — never both, never neither.'
-      oneOf:
-      - $comment: structured address present, inline absent
-        required:
-        - address
-        not:
-          required:
-          - inline_address
-      - $comment: inline address present, structured absent
-        required:
-        - inline_address
-        not:
-          required:
-          - address
-    AgeVerification:
-      type: object
-      properties:
-        verified:
-          type: integer
-        threshold:
-          type: integer
-    IssuingCarrier:
-      type: object
-      properties:
-        mcc:
-          type: string
-        mnc:
-          type: string
-        name:
-          type: string
-        spid:
-          type: string
-        ocn: {}
-    KycResults:
-      type: object
-      properties:
-        first_name_score:
-          type: integer
-        last_name_score:
-          type: integer
-        middle_name_score:
-          type: integer
-        name_score:
-          type: integer
-        address_score:
-          type: integer
-        street_no_score:
-          type: integer
-        street_score:
-          type: integer
-        city_score:
-          type: integer
-        postcode_score:
-          type: integer
-        dob_score:
-          type: integer
-        province_score:
-          type: integer
-        country_score:
-          type: integer
-        national_id_score:
-          type: integer
-        email_score:
-          type: integer
-    PlmRequest:
-      type: object
-      properties:
-        number:
-          type: string
-          minLength: 1
-          pattern: ^\+?[1-9][0-9]{6,14}$
-          description: Phone number in international form. Accepted with or without a leading '+'; the server normalises to E.164 and rejects numbers libphonenumber considers invalid (a regex cannot fully replicate that check).
-          examples:
-          - '+393273339145'
-          - '447808226974'
-        commands:
-          type: array
-          items:
-            $ref: '#/components/schemas/allowedCommandValues'
-          minItems: 1
-          description: Non-empty list of commands to run. Duplicate/unknown values are rejected (400).
-        kyc_challenges:
-          $ref: '#/components/schemas/KycChallenges'
-        tenure_period:
-          type: integer
-          description: Tenure window in days. Required only when the `tenure_period` command is requested.
-          examples:
-          - 90
-      additionalProperties: false
-      required:
-      - number
-      - commands
-      allOf:
-      - $comment: When kyc_match is requested, kyc_challenges is required.
-        if:
-          properties:
-            commands:
-              contains:
-                const: kyc_match
-          required:
-          - commands
-        then:
-          required:
-          - kyc_challenges
-      - $comment: When the tenure_period command is requested, the tenure_period value is required.
-        if:
-          properties:
-            commands:
-              contains:
-                const: tenure_period
-          required:
-          - commands
-        then:
-          required:
-          - tenure_period
-    NormalizedAddress:
-      type: object
-      properties:
-        street_no:
-          type: string
-        street:
-          type: string
-        city:
-          type: string
-        province:
-          type: string
-        postcode:
-          type: string
-        country:
-          type: string
     Address:
       type: object
       properties:
@@ -431,6 +279,158 @@ components:
       - city
       - postcode
       - country
+    AgeVerification:
+      type: object
+      properties:
+        verified:
+          type: integer
+        threshold:
+          type: integer
+    KycResults:
+      type: object
+      properties:
+        first_name_score:
+          type: integer
+        last_name_score:
+          type: integer
+        middle_name_score:
+          type: integer
+        name_score:
+          type: integer
+        address_score:
+          type: integer
+        street_no_score:
+          type: integer
+        street_score:
+          type: integer
+        city_score:
+          type: integer
+        postcode_score:
+          type: integer
+        dob_score:
+          type: integer
+        province_score:
+          type: integer
+        country_score:
+          type: integer
+        national_id_score:
+          type: integer
+        email_score:
+          type: integer
+    Simswap:
+      type: object
+      properties:
+        last_day:
+          type: integer
+          description: '1 when the last SIM change falls within the last 24 hours, 0 otherwise. Absent when neither can be stated: when the operator answered only that a swap happened somewhere inside a window wider than 24 h, and when it refused or held nothing.'
+        risk_indicator:
+          type: integer
+          description: '0 = the operator watched and found no SIM swap, the lowest risk there is. 1 = swap in the last 24 h, 2 = last 72 h, 3 = last 30 days, 4 = older than 30 days, which is stated only when the operator''s own monitored period is at least that long. Two negatives are answers, not failures: -1 = the operator answered that it holds nothing servable for this number, -2 = the operator answered refusing on this number. A command whose call got no answer leaves the whole block absent instead - which is the difference between an operator with nothing to say and a supplier that never replied.'
+          examples:
+          - 0
+        simswap_min_threshold:
+          type: integer
+          description: Lower bound, in hours, of the window the last SIM change falls into. Absent when there is no lower bound (the change is more recent than 24 h) and when there is no swap to bound at all (`risk_indicator` 0).
+        simswap_max_threshold:
+          type: integer
+          description: Upper bound, in hours, of the window the last SIM change falls into. Absent when there is no upper bound (the change is older than the monitored period) and when there is no swap to bound at all (`risk_indicator` 0). When the operator answered with the boolean alone, this is the window that boolean referred to.
+        date:
+          type: string
+          format: date-time
+          description: When the last SIM change happened, ISO-8601 UTC. Absent when the supplier answered but holds no date.
+          examples:
+          - '2018-10-17T23:00:00.000Z'
+        swapped:
+          type: boolean
+          description: Whether a SIM swap happened within the last `swapped_max_age` hours. Meaningless without that window, which is why the two always travel together. Absent when neither the date nor the supplier's own answer allowed it to be determined.
+          examples:
+          - false
+        swapped_max_age:
+          type: integer
+          description: The window, in hours, that `swapped` refers to.
+          examples:
+          - 240
+      description: SIM-swap block. `date` and the `risk_indicator` / threshold trio are the supplier's own view of the last SIM change; `swapped` / `swapped_max_age` are the CAMARA pair and answer one fixed question, so two suppliers can be compared.
+    PortingLogs:
+      type: object
+      properties:
+        plmnetwork:
+          type: integer
+        i_type:
+          type: string
+        action:
+          type: string
+        ts:
+          type: string
+          format: date-time
+          description: When the porting event happened, ISO-8601 UTC.
+          examples:
+          - '2016-03-11T09:15:00.000Z'
+    IssuingCarrier:
+      type: object
+      properties:
+        mcc:
+          type: string
+        mnc:
+          type: string
+        name:
+          type: string
+        spid:
+          type: string
+        ocn: {}
+    Name:
+      type: object
+      properties:
+        first_name:
+          type: string
+          minLength: 2
+          maxLength: 100
+          $comment: Server also requires ^[\p{L}][\p{L}'\-\s]*$; \p{L} is not portable across JSON Schema regex engines, so only length is validated here and the exact character rule stays server-side.
+        last_name:
+          type: string
+          minLength: 2
+          maxLength: 100
+        middle_name:
+          type: string
+          minLength: 2
+          maxLength: 100
+        name_kana_hankaku:
+          type: string
+        name_kana_zenkaku:
+          type: string
+        family_name_at_birth:
+          type: string
+          minLength: 2
+          maxLength: 100
+      additionalProperties: false
+    ProblemDetail:
+      type: object
+      description: RFC 7807 problem document returned on every 4xx/5xx.
+      properties:
+        type:
+          type: string
+          format: uri
+          example: about:blank
+        title:
+          type: string
+          example: Bad Request
+        status:
+          type: integer
+          format: int32
+          example: 400
+        detail:
+          type: string
+          example: Plumma commands list cannot be null or empty
+        instance:
+          type: string
+          example: /services/api
+        path:
+          type: string
+          example: /services/api
+        correlation_id:
+          type: string
+          format: uuid
+          example: 8b3489e2-dab3-4b1f-a448-2ab46071fac8
     CurrentCarrier:
       type: object
       properties:
@@ -444,20 +444,71 @@ components:
         spid:
           type: string
         ocn: {}
-    QdrHistory:
+    Dob:
       type: object
       properties:
-        service:
-          type: string
-        source:
-          type: string
-        ts:
-          type: string
-          format: date-time
-          description: When the query-detail record was observed, ISO-8601 UTC.
+        day:
+          type: integer
+          minimum: 1
+          maximum: 31
           examples:
-          - '2026-08-01T07:00:00.000Z'
-        plmnetwork:
+          - 28
+        month:
+          type: integer
+          minimum: 1
+          maximum: 12
+          examples:
+          - 2
+        year:
+          type: integer
+          minimum: 1900
+          maximum: 2100
+          examples:
+          - 1999
+      additionalProperties: false
+      description: Date of birth. Either fully specified (day+month+year) or entirely omitted — a partial DOB is rejected.
+      dependencies:
+        day:
+        - month
+        - year
+        month:
+        - day
+        - year
+        year:
+        - day
+        - month
+    DigitalFootprint:
+      type: object
+      properties:
+        whatsapp:
+          type: integer
+        telegram:
+          type: integer
+        amazon:
+          type: integer
+        google:
+          type: integer
+        office365:
+          type: integer
+        instagram:
+          type: integer
+        linkedin:
+          type: integer
+        twitter:
+          type: integer
+        skype:
+          type: integer
+        flipkart:
+          type: integer
+        viber:
+          type: integer
+        bukalapak:
+          type: integer
+        facebook:
+          type: integer
+        error:
+          type: integer
+        error_description:
           type: string
     PlmResponse:
       type: object
@@ -533,224 +584,92 @@ components:
           type: string
           readOnly: true
           description: The model-set version that produced this response. Compare it with `info.version` of this document to confirm the service matches the contract you are reading.
-    RoamingNetwork:
+    PlmRequest:
       type: object
       properties:
-        lrn: {}
-        mcc:
+        number:
           type: string
-        mnc:
-          type: string
-        name:
-          type: string
-        spid:
-          type: string
-        ocn: {}
-    PortingLogs:
-      type: object
-      properties:
-        plmnetwork:
-          type: integer
-        i_type:
-          type: string
-        action:
-          type: string
-        ts:
-          type: string
-          format: date-time
-          description: When the porting event happened, ISO-8601 UTC.
+          minLength: 1
+          pattern: ^\+?[1-9][0-9]{6,14}$
+          description: Phone number in international form. Accepted with or without a leading '+'; the server normalises to E.164 and rejects numbers libphonenumber considers invalid (a regex cannot fully replicate that check).
           examples:
-          - '2016-03-11T09:15:00.000Z'
+          - '+393273339145'
+          - '447808226974'
+        commands:
+          type: array
+          items:
+            $ref: '#/components/schemas/allowedCommandValues'
+          minItems: 1
+          description: Non-empty list of commands to run. Duplicate/unknown values are rejected (400).
+        kyc_challenges:
+          $ref: '#/components/schemas/KycChallenges'
+        tenure_period:
+          type: integer
+          description: Tenure window in days. Required only when the `tenure_period` command is requested.
+          examples:
+          - 90
+      additionalProperties: false
+      required:
+      - number
+      - commands
+      allOf:
+      - $comment: When kyc_match is requested, kyc_challenges is required.
+        if:
+          properties:
+            commands:
+              contains:
+                const: kyc_match
+          required:
+          - commands
+        then:
+          required:
+          - kyc_challenges
+      - $comment: When the tenure_period command is requested, the tenure_period value is required.
+        if:
+          properties:
+            commands:
+              contains:
+                const: tenure_period
+          required:
+          - commands
+        then:
+          required:
+          - tenure_period
     DivertDetector:
       type: object
       properties:
         unconditional_call_forward:
           type: integer
-    Name:
+    QdrHistory:
       type: object
       properties:
-        first_name:
+        service:
           type: string
-          minLength: 2
-          maxLength: 100
-          $comment: Server also requires ^[\p{L}][\p{L}'\-\s]*$; \p{L} is not portable across JSON Schema regex engines, so only length is validated here and the exact character rule stays server-side.
-        last_name:
-          type: string
-          minLength: 2
-          maxLength: 100
-        middle_name:
-          type: string
-          minLength: 2
-          maxLength: 100
-        name_kana_hankaku:
-          type: string
-        name_kana_zenkaku:
-          type: string
-        family_name_at_birth:
-          type: string
-          minLength: 2
-          maxLength: 100
-      additionalProperties: false
-    Dob:
-      type: object
-      properties:
-        day:
-          type: integer
-          minimum: 1
-          maximum: 31
-          examples:
-          - 28
-        month:
-          type: integer
-          minimum: 1
-          maximum: 12
-          examples:
-          - 2
-        year:
-          type: integer
-          minimum: 1900
-          maximum: 2100
-          examples:
-          - 1999
-      additionalProperties: false
-      description: Date of birth. Either fully specified (day+month+year) or entirely omitted — a partial DOB is rejected.
-      dependencies:
-        day:
-        - month
-        - year
-        month:
-        - day
-        - year
-        year:
-        - day
-        - month
-    ProblemDetail:
-      type: object
-      description: RFC 7807 problem document returned on every 4xx/5xx.
-      properties:
-        type:
-          type: string
-          format: uri
-          example: about:blank
-        title:
-          type: string
-          example: Bad Request
-        status:
-          type: integer
-          format: int32
-          example: 400
-        detail:
-          type: string
-          example: Plumma commands list cannot be null or empty
-        instance:
-          type: string
-          example: /services/api
-        path:
-          type: string
-          example: /services/api
-        correlation_id:
-          type: string
-          format: uuid
-          example: 8b3489e2-dab3-4b1f-a448-2ab46071fac8
-    DigitalFootprint:
-      type: object
-      properties:
-        whatsapp:
-          type: integer
-        telegram:
-          type: integer
-        amazon:
-          type: integer
-        google:
-          type: integer
-        office365:
-          type: integer
-        instagram:
-          type: integer
-        linkedin:
-          type: integer
-        twitter:
-          type: integer
-        skype:
-          type: integer
-        flipkart:
-          type: integer
-        viber:
-          type: integer
-        bukalapak:
-          type: integer
-        facebook:
-          type: integer
-        error:
-          type: integer
-        error_description:
-          type: string
-    Simswap:
-      type: object
-      properties:
-        last_day:
-          type: integer
-          description: '1 when the last SIM change falls within the last 24 hours, 0 otherwise. Absent when neither can be stated: when the operator answered only that a swap happened somewhere inside a window wider than 24 h, and when it refused or held nothing.'
-        risk_indicator:
-          type: integer
-          description: '0 = the operator watched and found no SIM swap, the lowest risk there is. 1 = swap in the last 24 h, 2 = last 72 h, 3 = last 30 days, 4 = older than 30 days, which is stated only when the operator''s own monitored period is at least that long. Two negatives are answers, not failures: -1 = the operator answered that it holds nothing servable for this number, -2 = the operator answered refusing on this number. A command whose call got no answer leaves the whole block absent instead - which is the difference between an operator with nothing to say and a supplier that never replied.'
-          examples:
-          - 0
-        simswap_min_threshold:
-          type: integer
-          description: Lower bound, in hours, of the window the last SIM change falls into. Absent when there is no lower bound (the change is more recent than 24 h) and when there is no swap to bound at all (`risk_indicator` 0).
-        simswap_max_threshold:
-          type: integer
-          description: Upper bound, in hours, of the window the last SIM change falls into. Absent when there is no upper bound (the change is older than the monitored period) and when there is no swap to bound at all (`risk_indicator` 0). When the operator answered with the boolean alone, this is the window that boolean referred to.
-        date:
-          type: string
-          format: date-time
-          description: When the last SIM change happened, ISO-8601 UTC. Absent when the supplier answered but holds no date.
-          examples:
-          - '2018-10-17T23:00:00.000Z'
-        swapped:
-          type: boolean
-          description: Whether a SIM swap happened within the last `swapped_max_age` hours. Meaningless without that window, which is why the two always travel together. Absent when neither the date nor the supplier's own answer allowed it to be determined.
-          examples:
-          - false
-        swapped_max_age:
-          type: integer
-          description: The window, in hours, that `swapped` refers to.
-          examples:
-          - 240
-      description: SIM-swap block. `date` and the `risk_indicator` / threshold trio are the supplier's own view of the last SIM change; `swapped` / `swapped_max_age` are the CAMARA pair and answer one fixed question, so two suppliers can be compared.
-    ChurnTracker:
-      type: object
-      properties:
-        operator:
-          type: string
-        action:
+        source:
           type: string
         ts:
           type: string
           format: date-time
-          description: When the deactivation/churn event happened, ISO-8601 UTC.
+          description: When the query-detail record was observed, ISO-8601 UTC.
           examples:
-          - '2025-11-02T08:30:00.000Z'
-        number:
-          type: integer
-        number2:
-          type: integer
-    InlineAddress:
+          - '2026-08-01T07:00:00.000Z'
+        plmnetwork:
+          type: string
+    NormalizedAddress:
       type: object
       properties:
-        address:
+        street_no:
           type: string
-          minLength: 1
-          examples:
-          - 23 Omnia Street, London, EC1A 1BB, GB
-        normalize:
-          type: boolean
-          default: false
-      additionalProperties: false
-      description: Free-text address as a single string. Mutually exclusive with address.
-      required:
-      - address
+        street:
+          type: string
+        city:
+          type: string
+        province:
+          type: string
+        postcode:
+          type: string
+        country:
+          type: string
     allowedCommandValues:
       type: string
       enum:
@@ -771,6 +690,94 @@ components:
       - divert_detector
       - commercial_segment
       - tenure_period
+    KycChallenges:
+      type: object
+      properties:
+        dob:
+          $ref: '#/components/schemas/Dob'
+        name:
+          $ref: '#/components/schemas/Name'
+        address:
+          $ref: '#/components/schemas/Address'
+        email:
+          type: string
+          format: email
+          examples:
+          - john.smith@example.com
+        inline_address:
+          $ref: '#/components/schemas/InlineAddress'
+        return_address:
+          type: boolean
+          description: Ask the supplier to return the normalized address block.
+        gender:
+          type: string
+      additionalProperties: false
+      description: 'Data to match for `kyc_match`. Must carry EXACTLY ONE address form: `address` (structured) or `inline_address` (free text) — never both, never neither.'
+      oneOf:
+      - $comment: structured address present, inline absent
+        required:
+        - address
+        not:
+          required:
+          - inline_address
+      - $comment: inline address present, structured absent
+        required:
+        - inline_address
+        not:
+          required:
+          - address
+    InlineAddress:
+      type: object
+      properties:
+        address:
+          type: string
+          minLength: 1
+          examples:
+          - 23 Omnia Street, London, EC1A 1BB, GB
+        normalize:
+          type: boolean
+          default: false
+      additionalProperties: false
+      description: Free-text address as a single string. Mutually exclusive with address.
+      required:
+      - address
+    ChurnTracker:
+      type: object
+      properties:
+        operator:
+          type: string
+        action:
+          type: string
+        ts:
+          type: string
+          format: date-time
+          description: When the deactivation/churn event happened, ISO-8601 UTC.
+          examples:
+          - '2025-11-02T08:30:00.000Z'
+        number:
+          type: integer
+        number2:
+          type: integer
+    RoamingNetwork:
+      type: object
+      properties:
+        lrn: {}
+        mcc:
+          type: string
+        mnc:
+          type: string
+        name:
+          type: string
+        spid:
+          type: string
+        ocn: {}
+  headers:
+    CorrelationId:
+      description: Server-generated request id, echoed on every response. Never sent by the client.
+      schema:
+        type: string
+        format: uuid
+        example: 8b3489e2-dab3-4b1f-a448-2ab46071fac8
   parameters:
     ApplicationId:
       name: x-plumma-connect-app-id
@@ -802,13 +809,6 @@ components:
         type: string
         pattern: ^[0-9]+$
       example: '11'
-  headers:
-    CorrelationId:
-      description: Server-generated request id, echoed on every response. Never sent by the client.
-      schema:
-        type: string
-        format: uuid
-        example: 8b3489e2-dab3-4b1f-a448-2ab46071fac8
   securitySchemes:
     ApiKeyAuth:
       type: apiKey
