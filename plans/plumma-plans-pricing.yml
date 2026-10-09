@@ -94,3 +94,24 @@ sign_up:
     Production go-live still requires countersigned paper — Master Agreement, DPA,
     Technical Addendum and these Terms (ToS Art. 3.1) — so the funnel is self-service to
     sandbox and contracted to production.
+x-canonical:
+  generated: '2026-10-08'
+  vocabulary: all/0-working/economics/plans-canonical.yml
+  models:
+  - free
+  - hybrid
+  units: []
+  plans:
+  - name: Demo
+    access: other
+    model: free
+    model_how: derived
+    units: []
+    periods: []
+  - name: Live (Plumma Connect subscription)
+    access: other
+    model: hybrid
+    model_how: derived
+    units: []
+    periods:
+    - month
