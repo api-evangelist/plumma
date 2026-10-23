@@ -815,3 +815,9 @@ components:
       in: header
       name: x-plumma-connect-api-key
       description: Your X.509 client certificate, base64-encoded.
+x-provenance:
+  method: harvested
+  publisher: Plumma
+  source: https://connect.plumma.it/docs/openapi/connect-api.json
+  note: split by refine-openapis from the provider's own published document, verified by fetch (openapi/_original/*.fetch.json);
+    stamped by stamp-openapi-provenance.py (roadmap#793)
